@@ -1,0 +1,21 @@
+{
+  "_meta": {
+    "note": "SAMPLE user profile for demo. Stored on device, NOT in the local pack.",
+    "schema_version": "0.1"
+  },
+  "user_profile": {
+    "language_level": "limited",
+    "area": "minato",
+    "has_child": true,
+    "needs_plain_japanese": true,
+    "downloaded_pack": [
+      "roppongi-azabu"
+    ],
+    "coords": {
+      "lat": 35.660826,
+      "lng": 139.732266
+    },
+    "address": "六本木中学校",
+    "demo_location_name": "六本木中学校"
+  }
+}

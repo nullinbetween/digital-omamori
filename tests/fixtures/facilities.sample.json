@@ -1,0 +1,72 @@
+{
+ "meta": {
+  "schema_version": "0.3",
+  "WARNING": "SAMPLE / placeholder — NOT real Minato official or field-verified data. Replace before any real use.",
+  "area": "Minato / Roppongi-Azabu"
+ },
+ "facility": [
+  {
+   "facility_id": "min-shel-001",
+   "name": "麻布地区総合支所（サンプル）",
+   "type": "shelter",
+   "official_type_jp": "避難所",
+   "is_official": true,
+   "lat": 35.6565,
+   "lng": 139.736,
+   "official_description_jp": "震災時等に開設される避難所。自宅が危険な場合に滞在できる。",
+   "english_plain": "Evacuation shelter. If your home is unsafe after a disaster, you can stay here.",
+   "yasashii_jp": "ひなんじょ。じしんの あと、いえが あぶないときは、ここに いられます。",
+   "source": "SAMPLE (placeholder for Minato City open data)",
+   "last_updated": "2026-06-18",
+   "elevation_m": 8.2,
+   "elevation_datum": "T.P. (東京湾平均海面)",
+   "elevation_source": "国土地理院 標高API（DEM）"
+  },
+  {
+   "facility_id": "min-aed-001",
+   "name": "六本木公共施設 AED（サンプル）",
+   "type": "aed",
+   "official_type_jp": "AED設置場所",
+   "is_official": true,
+   "lat": 35.6628,
+   "lng": 139.7314,
+   "official_description_jp": "AED（自動体外式除細動器）設置場所。施設の開館時間内に利用可能。",
+   "english_plain": "AED location (heart-restart device). Usable during the building's open hours.",
+   "yasashii_jp": "AED（しんぞうを たすける きかい）が あります。たてものが あいている じかんに つかえます。",
+   "source": "SAMPLE (placeholder)",
+   "last_updated": "2026-06-18"
+  },
+  {
+   "facility_id": "min-conv-001",
+   "name": "ローソン 麻布十番店（サンプル）",
+   "type": "convenience_support",
+   "official_type_jp": "災害時帰宅支援ステーション",
+   "is_official": false,
+   "lat": 35.6556,
+   "lng": 139.7365,
+   "official_description_jp": "災害時帰宅支援ステーション。水道水・トイレ・道路情報などの提供に協力する店舗。",
+   "english_plain": "Disaster support stop (a convenience store). It may help with tap water, restroom, or road information. It is not a shelter.",
+   "yasashii_jp": "さいがいの ときに たすけて くれる おみせ。みず・トイレ・みちの じょうほうが もらえることが あります。ひなんじょ では ありません。",
+   "source": "SAMPLE (placeholder)",
+   "last_updated": "2026-06-18"
+  },
+  {
+   "facility_id": "min-shel-002",
+   "name": "高台小学校（サンプル）",
+   "type": "shelter",
+   "official_type_jp": "避難所",
+   "is_official": true,
+   "lat": 35.6605,
+   "lng": 139.73999999999998,
+   "official_description_jp": "震災時等に開設される避難所。自宅が危険な場合に滞在できる。",
+   "english_plain": "Evacuation shelter. If your home is unsafe after a disaster, you can stay here.",
+   "yasashii_jp": "ひなんじょ。じしんの あと、いえが あぶないときは、ここに いられます。",
+   "source": "SAMPLE (placeholder for Minato City open data)",
+   "last_updated": "2026-06-18",
+   "name_en": "Takadai Elementary (sample)",
+   "elevation_m": 29.5,
+   "elevation_datum": "T.P. (東京湾平均海面)",
+   "elevation_source": "国土地理院 標高API（DEM）"
+  }
+ ]
+}

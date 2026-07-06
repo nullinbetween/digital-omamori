@@ -1,0 +1,22 @@
+{
+  "meta": {
+    "schema_version": "0.3",
+    "WARNING": "SAMPLE / placeholder — NOT real Minato official or field-verified data. Replace before any real use."
+  },
+  "decision_card_template": [
+    {
+      "template_id": "dc-quake-nearest",
+      "scenario_key": "earthquake_network_unstable",
+      "recommended_action": "If the street looks safe, go to {nearest_support_point} ({distance}). If not, stay where you are.",
+      "why": "This is the nearest saved support point in your local pack.",
+      "caution": "Check your surroundings first. Do not move if roads, buildings, or weather conditions look dangerous. Follow official instructions when available.",
+      "english": "You are near {area}. {recommended_action} Why: {why} Caution: {caution}",
+      "yasashii_jp": "いま {area} の ちかくです。{recommended_action_ja} りゆう：{why_ja} ちゅうい：{caution_ja}",
+      "slots": [
+        "area",
+        "nearest_support_point",
+        "distance"
+      ]
+    }
+  ]
+}

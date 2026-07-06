@@ -1,0 +1,58 @@
+[
+ {
+  "location_id": "azabu-library-demo",
+  "display_name": "港区立（みなとくりつ）麻布図書館（あざぶとしょかん）",
+  "aliases": [
+   "麻布図書館",
+   "Azabu Library",
+   "港区立麻布図書館",
+   "Azabu demo home"
+  ],
+  "lat": 35.65757,
+  "lng": 139.73584,
+  "note": "Demo sample location. Not user real address.",
+  "elevation_m": 9.3,
+  "elevation_datum": "T.P. (東京湾平均海面)",
+  "elevation_source": "国土地理院 標高API（DEM）",
+  "elevation_source_url": "https://maps.gsi.go.jp/development/elevation.html",
+  "elevation_retrieved": "2026-06-23",
+  "dem_source": "1m（レーザ）"
+ },
+ {
+  "location_id": "roppongi-jhs-demo",
+  "display_name": "六本木中学校（ろっぽんぎちゅうがっこう）",
+  "aliases": [
+   "六本木中学校",
+   "Roppongi Junior High School",
+   "Roppongi demo home",
+   "六本木"
+  ],
+  "lat": 35.660826,
+  "lng": 139.732266,
+  "note": "Demo sample location (coord from official facility pack).",
+  "elevation_m": 22.3,
+  "elevation_datum": "T.P. (東京湾平均海面)",
+  "elevation_source": "国土地理院 標高API（DEM）",
+  "elevation_source_url": "https://maps.gsi.go.jp/development/elevation.html",
+  "elevation_retrieved": "2026-06-23",
+  "dem_source": "1m（レーザ）"
+ },
+ {
+  "location_id": "azabu-juban-demo",
+  "display_name": "麻布十番（あざぶじゅうばん）（公共（こうきょう）駐車場（ちゅうしゃじょう））",
+  "aliases": [
+   "麻布十番",
+   "Azabu-Juban",
+   "麻布十番駅"
+  ],
+  "lat": 35.657052,
+  "lng": 139.734507,
+  "note": "Demo sample location (coord from official facility pack).",
+  "elevation_m": 9.7,
+  "elevation_datum": "T.P. (東京湾平均海面)",
+  "elevation_source": "国土地理院 標高API（DEM）",
+  "elevation_source_url": "https://maps.gsi.go.jp/development/elevation.html",
+  "elevation_retrieved": "2026-06-23",
+  "dem_source": "1m（レーザ）"
+ }
+]

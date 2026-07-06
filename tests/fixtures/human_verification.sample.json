@@ -1,0 +1,41 @@
+{
+  "meta": {
+    "schema_version": "0.3",
+    "WARNING": "SAMPLE / placeholder — NOT real Minato official or field-verified data. Replace before any real use."
+  },
+  "human_verification": [
+    {
+      "facility_id": "min-shel-001",
+      "entrance_visibility": "easy",
+      "english_signage": false,
+      "stroller_friendly": true,
+      "night_visibility": "bright",
+      "can_pause_with_child": true,
+      "field_note": "入口は建物の正面、わかりやすい。夜間も照明あり。ベビーカーで入れる。",
+      "verification_status": "verified",
+      "verified_at": "2026-06-15"
+    },
+    {
+      "facility_id": "min-aed-001",
+      "entrance_visibility": "confusing",
+      "english_signage": false,
+      "stroller_friendly": true,
+      "night_visibility": "moderate",
+      "can_pause_with_child": false,
+      "field_note": "AEDは受付横だが場所が分かりにくい。英語表示なし。",
+      "verification_status": "needs_review",
+      "verified_at": "2026-06-10"
+    },
+    {
+      "facility_id": "min-conv-001",
+      "entrance_visibility": "easy",
+      "english_signage": true,
+      "stroller_friendly": true,
+      "night_visibility": "bright",
+      "can_pause_with_child": true,
+      "field_note": "24時間営業。入口に支援ステーションのステッカーあり。スタッフは少し英語可。",
+      "verification_status": "verified",
+      "verified_at": "2026-06-16"
+    }
+  ]
+}

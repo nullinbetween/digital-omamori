@@ -1,0 +1,53 @@
+# =============================================================
+# .gitignore — Digital Omamori
+# Usage: run `git init` directly in this folder (plainsafe/). This file keeps
+#        internal / sensitive / oversized files out of the public repo, so no
+#        separate "clean copy" is needed (nothing to keep in sync, no drift).
+# =============================================================
+
+# --- 1. Keys / credentials (hard rule: never in the repo) ---
+.config.json
+.cert/
+*.pem
+*.key
+GEMINI_KEY.txt
+gcp-key.json
+
+# --- 2. Dependencies / runtime artifacts (regenerable) ---
+node_modules/
+__pycache__/
+*.pyc
+backup/
+data/*.tmp
+.DS_Store
+
+# --- 3. Internal history / old versions (not product, oversized) ---
+snapshots/          # internal milestone snapshots (kept locally)
+legacy/             # old phone-frame version
+
+# --- 4. Internal working files (contain local paths or working notes) ---
+*.command           # launcher scripts (contain local absolute paths)
+STANDARDS.md        # internal working standards, not a product doc
+data/kuji_content_draft.md   # internal omikuji authoring draft (kuji.json is the shipped data)
+
+# --- 5. QA / test-only assets (not app data) ---
+# Note: photos/ is a seed demo asset and IS shipped (card thumbnails on deploy/clone);
+#       only QA test images + an AI-generated test image are excluded:
+photos/heic-test-front.heic
+photos/muji-test-front.png
+photos/muji-test2-front.png
+photos/pn-front.png
+data/imagefable.png  # 2.5MB AI-generated Lens QA test image, not app data
+
+# =============================================================
+# Shipped to the public repo (for reference):
+#   index.html server.py storage.py sw.js manifest.json
+#   Dockerfile requirements.txt package.json
+#   README.md CHANGELOG.md RUN.md DEPLOY_GUIDE.md .gcloudignore .dockerignore
+#   app/  data/(JSON packs)  photos/(1 seed)  tests/(suites + fixtures)
+# =============================================================
+
+# repo hygiene 2026-07-06: internal boxes, never ship
+_dev_only/
+_archive/
+_to_be_deleted/

@@ -1,0 +1,1746 @@
+<!doctype html>
+<!--
+  Digital Omamori — index.html (Prototype V11)
+  Local-first disaster-prep app for foreign residents in Japan (English + easy Japanese).
+  Version = Prototype V11 — a single product-iteration version (Hackathon-1 agent.py style:
+  each major product/architecture/QA phase = one version; now 11th phase). No separate
+  internal semver. Change history is
+  date-stamped in CHANGELOG.md; the build-log notes below are kept as handoff history.
+
+  Prototype V11 — Coverage-consistency + honest seed (2026-07-06):
+    - First real-household inventory seed (22 photographed items across all categories,
+      incl. 2 expired items for the rotation reminder) replaces the MUJI dummy; seed
+      targetQuantity now computed via the app's own resolveTarget() (was hand-filled = quantity).
+    - Today ring, disaster-omikuji %, and Ready Check % now all read the same household-coverage %
+      (closed a trust gap: the kit "usable %" ignored sufficiency and could imply false safety).
+    - UI/data layer only; no core.js / coverage-logic change. 108 tests + 13 vocab-lint + 19 dataflow.
+  Prototype V10 — Mobile UX overhaul + language QA close-out (2026-07-03 → 07-05):
+    - Bottom navigation on phones (4 thumb-reach slots + "More" panel); desktop keeps top tabs.
+    - Emergency-app header pattern on mobile (centered brand, large Emergency button).
+    - Language-independent layout anchors: EN ⇄ easy-Japanese switch no longer shifts the UI
+      (ruby-inclusive line heights, per-slot tab widths, fixed control sizes).
+    - Page-by-page copy QA completed (やさしい日本語 rulebook, vocab lint test suite).
+    - "Offline mode" naming unified app-wide; front door = daily digest (Today's omamori).
+    - Two-layer item classification (user-chosen category + in-category keywords);
+      AED English names app-generated with ＊ labeling (official field never touched).
+    - 108 tests + 10 vocab-lint + 19 privacy dataflow checks.
+  Prototype V9 — Submission / credibility QA:
+    - "Local guidance mode": app-level resilience state (not an error) — AI features pause,
+      deterministic features keep working.
+    - Internal rule-matching hidden from users -> plain-language "Counts toward Ready Check".
+    - Safety guard: an empty water container is not drinking water (no false coverage).
+    - Removed overclaims (official / auto-update / offline); Guide page rewritten.
+    - Ready Check is the primary add-entry; Extra kit items separated; Babies/Pets gating;
+      full Japanese furigana.
+    - Privacy by design: public safety data served from Cloud Run; private household data
+      (profile, saved places, inventory, readiness) kept in browser localStorage, never
+      POSTed to the backend. Photos are session preview only.
+    - Coverage integrity (2026-07-02): Ready Check counts only save-time classification;
+      extra/ambiguous items never inflate readiness. Status pill honest-labeled
+      ("Offline · simulated" during the offline demo; real connection otherwise). Live app clock.
+      99 tests + 19 privacy dataflow checks.
+  Prototype V8 — Rebrand to Digital Omamori + source trust:
+    - Omamori (protective charm) concept + tagline "Turn everyday readiness into emergency action."
+    - Pack consent + source-level badges (public guidance / common preparedness /
+      household-specific) + citations.
+  Prototype V7 — Lens multimodal:
+    - Photograph / upload a Japanese notice -> native-language summary + easy-Japanese
+      action, grounded on local hard data.
+  Prototype V6 — Ready-Kuji (disaster omikuji) + full Gemini wiring:
+    - google-genai + gemini-3.5-flash + service-account ADC.
+    - Tier = real readiness % (deterministic) -> Gemini phrasing + 20-slip fallback.
+  Prototype V5 — Inventory expansion + Profile calculator + Nearby view + Guide draft.
+  Prototype V4 — Real official local pack:
+    - All 311 Minato-ku facilities (shelters / AED / water stations, real coords) + GSI elevation.
+  Prototype V3 — Recommendation / coverage engine (core.js §10):
+    - Scan -> matched_rule + personalized target + Ready Check.
+  Prototype V2 — Real management app:
+    - server.py + JSON CRUD + PWA (offline shell); dropped the phone-frame demo.
+  Prototype V1 — prototype skeleton:
+    - Disaster-supply DB + Emergency decision cards + Prepare/Respond dual track.
+  --- below: build-log history (kept for handoff; project uses a single Prototype V11 version + dated CHANGELOG) ---
+  2026-07-02 (Prototype V9) — Privacy by design, architecture migration:
+    - Private household data moved to browser localStorage (keys omamori_supply_v1 / omamori_user_v1).
+      loadAll seeds from server GET on first empty load, then reads/writes localStorage only.
+    - saveSupply / saveAddress / togglePack / setDemoLocation etc. no longer POST to Cloud Run.
+    - Server private write endpoints removed (POST /api/supply·/api/user-profile·/api/photo, GET/POST /api/inventory);
+      supply·user-profile remain read-only GET seed.
+    - Photos: session preview only (base64 not persisted to localStorage or server); future = IndexedDB.
+    - Ready-Kuji sends only coarse readiness tier to Gemini (no full gaps / percent) — data minimization.
+    - Tests updated (dashboard smoke asserts localStorage; server smoke asserts private POST → 404). 97 green.
+  v0.6 changes:
+    - Local Pack -> 周辺ビュー Nearby View (summary + nearest shelter/AED card + static filter + rows instead of cards + bearing); Arial app-wide; official やさしい日本語 ruby (applyRuby renders 漢字（かな） -> <ruby>); language toggle inside Emergency; Kit status definition table; images restricted to jpg/png; demo address parsing; GPS demoted to a developer-only option.
+  v0.5 changes:
+    - store purchase-shop field (edit + card); STORED AT changed to button options (pick from the storage list + add new); photo front + label upload (/api/photo) + card thumbnail.
+    - Added a Stock tab (restock fast-log: +1 / top-up -> add quantity + log entry, last restock / low gaps / recent activity).
+    - Added a Profile tab (household size / days stepper = calculator -> Ready Check target updates live; add/remove storage locations; address placeholder kept local, not uploaded).
+  v0.4 changes:
+    - Added a Recommend tab (renderRecommend): official recommended list with personalized target vs actual stock -> covered/partial/missing + readiness % + progress bar + one-tap Add to kit.
+    - Scan-to-register wired to the matching engine: scan -> matchScanToRule; strong features auto-classify, low confidence shows candidate chips requiring manual confirmation (renderMatchBox / matchName / pickRule).
+    - Loads /api/catalog; saveItem writes matched_rule_id/confidence/needs_manual_confirm.
+  v0.3: Kids-Meal-style responsive management dashboard (kit/pack/check tabs + filter + CRUD + Emergency offline card).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#D0CAE9">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="app/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="app/icon-192.png">
+<title>Digital ✦ Omamori</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --moon:#FBFBFE;--moon-2:#EEF0F7;--cloud:#FFFFFF;
+  --ink:#3D4050;--ink-soft:#878BA1;--ink-faint:#B4B7C8;
+  --platinum:#C7CCDA;--pearl:#ECEEF5;
+  --line:rgba(150,156,186,0.24);--line-soft:rgba(150,156,186,0.14);
+  --lav:#D0CAE9;--lav-deep:#9189C0;--sky:#CBDAEE;--sky-deep:#7B99C0;
+  --rose:#EAD6DB;--rose-deep:#BE96A0;--gold:#E9DEC2;--gold-deep:#B49A63;
+  /* Body text uses Arial (clarity matters for disaster info; Japanese falls back to Hiragino/Noto).
+     Headings/brand/numbers use Inter 600-700 (UI-1 type hierarchy; Inter = highly legible UI font, keeps the clarity principle). */
+  --serif:Arial,"Hiragino Sans","Noto Sans JP","PingFang TC",sans-serif;
+  --display:"Inter",Arial,"Hiragino Sans","Noto Sans JP","PingFang TC",sans-serif;
+  --sans:Arial,"Hiragino Sans","Noto Sans JP","PingFang TC",sans-serif;
+  --num:"Inter",Arial,"Helvetica Neue",sans-serif;
+  --shadow-soft:0 8px 40px rgba(130,135,170,0.10);
+  --shadow-card:0 5px 24px rgba(130,135,170,0.08);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{overflow-x:clip;}/* App-wide guard against horizontal overflow blowing out the viewport (clip creates no scroll container = safe for the sticky topbar; edge cases like long ruby atoms are clipped in place) */
+body{font-family:var(--sans);color:var(--ink);font-size:14px;line-height:1.55;
+  background:linear-gradient(180deg,var(--moon),var(--moon-2));min-height:100vh;}
+
+/* top bar */
+.topbar{position:sticky;top:0;z-index:20;background:rgba(251,251,254,0.85);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);}
+.topbar-in{max-width:1200px;margin:0 auto;padding:14px 22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.brand{font-family:var(--display);font-size:26px;font-weight:600;letter-spacing:2px;line-height:1;display:flex;align-items:center;gap:8px;}
+/* UI-2 brand system: the 御守 (omamori) mark (lavender pouch + washi gold cord + ✦) = the convergence of the two-layer color language: cool lavender deterministic layer x warm washi AI layer */
+.brand-mark{width:17px;height:auto;flex-shrink:0;}
+.brand-t{background:linear-gradient(180deg,#5A5E72,#9AA0B6 55%,#D5D9E6);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.brand .star{color:var(--lav-deep);-webkit-text-fill-color:var(--lav-deep);font-size:15px;vertical-align:4px;margin:0 4px;}
+/* min-height set for JA ruby needs (the tagline has furigana) -> EN/JA same height, so the header divider does not float with language */
+.brand-sub{font-family:var(--display);font-size:9.5px;letter-spacing:3px;text-transform:uppercase;color:var(--ink-soft);margin-top:4px;min-height:19px;display:flex;align-items:flex-end;}
+.spacer{flex:1;}
+/* Desktop reverts to a single row: brand + status light on the left; right group [offline demo, gray] -> [language] -> [Emergency = far-right corner, muscle-memory spot]. The two-row desktop variant was dropped. The mobile two-row structure lives in the @media block. */
+.topbar-ctrls{display:flex;align-items:center;gap:16px;}
+.topbar-ctrls .lang-toggle{order:9;margin-left:auto;}/* Order within ctrls: lg-pill first, toggle after (right next to the Emergency button) */
+/* Connection pill moved next to the brand (semantics = app status light; it widens without pushing the right-side controls) */
+.brand-row{display:flex;align-items:center;gap:12px;}
+/* All topbar control heights are fixed (JA ruby cannot stretch them) -> divider position is language-independent */
+/* The three ctrls share a fixed height of 38 (language toggle / lg-pill / Emergency button; the Emergency button's weight comes from red + shadow, not height) */
+.lang-toggle{display:flex;border:1px solid var(--line);border-radius:20px;overflow:hidden;background:rgba(255,255,255,0.6);height:38px;}
+.lang-toggle button{border:none;background:transparent;color:var(--ink-soft);font:600 11px var(--sans);padding:0 12px;height:100%;display:inline-flex;align-items:center;cursor:pointer;}
+.lang-toggle button.on{background:var(--lav);color:#4A4470;}
+/* Fixed width = EN "Emergency" / JA 緊急 render at the same button size, so switching language does not resize it (mobile QA) */
+.emergency-btn{border:none;border-radius:12px;background:#C0392B;color:#fff;font:700 13px var(--sans);
+  height:38px;width:136px;padding:0 10px;justify-content:center;cursor:pointer;box-shadow:0 4px 14px rgba(192,57,43,.35);display:flex;align-items:center;gap:7px;}
+.emergency-btn:active{transform:scale(.97);}
+/* Local guidance mode pill — a low-key mode toggle in the top bar (not an error, not red, no alarm icon). Light-purple fill when ON. */
+/* Fixed width = all four states EN(Offline mode/mode ON)/JA(オフラインモード/モード ON) share one button -> right-side controls stay put. The モード wording is zero-ruby; the pitch explains its simulated nature. */
+.lg-pill{border:1px solid var(--line);border-radius:20px;background:transparent;color:var(--ink-soft);font:600 11px var(--sans);height:38px;width:132px;padding:0;justify-content:center;display:inline-flex;align-items:center;cursor:pointer;white-space:nowrap;}/* De-emphasized = utility gray (a demo utility, not a primary feature); ON state stays light-purple so it is visible while in use */
+.lg-pill:hover{filter:brightness(0.97);}
+.lg-pill.on{background:#EDEBF7;border-color:#C7C2E6;color:#4A4470;}
+/* Connection status pill — real navigator.onLine (reports browser connectivity only, not whether AI/portal is available) */
+.demo-status-pill{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:20px;background:rgba(255,255,255,0.6);color:var(--ink-soft);font:600 11px var(--sans);height:34px;padding:0 10px;white-space:nowrap;}
+.demo-status-dot{width:7px;height:7px;border-radius:50%;background:#7BB98C;}
+.demo-status-pill.off{color:#9A6A3A;}
+.demo-status-pill.off .demo-status-dot{background:#D9A441;}
+.offline-banner{background:#FBF3E7;border:1px solid #E8D3A8;color:#8A6A2E;font-size:12px;line-height:1.55;border-radius:10px;padding:9px 12px;margin-bottom:12px;}
+/* tabs */
+.tabs{max-width:1200px;margin:0 auto;padding:0 22px;display:flex;gap:6px;
+  overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.tabs::-webkit-scrollbar{display:none;}
+/* Fixed height (52px) + text bottom-aligned: JA ruby sits in the reserved space above, EN just gets extra whitespace -> divider position is constant across both languages (QA) */
+.tabs button{border:none;background:transparent;color:var(--ink-soft);font:600 13px var(--sans);
+  height:52px;padding:0 16px 12px;display:inline-flex;align-items:flex-end;justify-content:center;
+  cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;flex-shrink:0;}
+/* Per-slot min-width = the wider of the two languages (fixed tab order: lens/check(きょう)/recommend/kit/pack/profile/guide, after the IA front-door redesign) -> tab positions stay constant when switching language */
+.tabs button:nth-child(1){min-width:96px;}
+.tabs button:nth-child(2){min-width:96px;}
+.tabs button:nth-child(3){min-width:120px;}
+.tabs button:nth-child(4){min-width:156px;}
+.tabs button:nth-child(5){min-width:120px;}
+.tabs button:nth-child(6){min-width:100px;}
+.tabs button:nth-child(7){min-width:76px;}
+.tabs button.on{color:var(--lav-deep);border-bottom-color:var(--lav-deep);}
+/* Lens = signature AI feature, always on a washi (Japanese-paper) background (so it reads as a key feature at a glance); washi not lavender aligns with the Guide's "color carries meaning" language (washi color = AI layer) */
+.tabs button.t-lens{background:#F5EEDC;background-clip:padding-box;border-radius:10px;color:#8A7140;}/* Opaque light gold (a translucent overlay would muddy it); clip = the gold does not bleed into the bottom 2px border slot */
+.tabs button.t-lens.on{background:var(--gold);color:#6B5730;border-bottom-color:transparent;}/* Lens active = deeper gold, no underline (an underline over the gold reads as a shadow; the pill itself indicates position) */
+/* Bottom nav (mobile navigation moves to the bottom bar = thumb zone; 4 direct + その他 More panel; not used on desktop) */
+.bnav,.bnav-more,.bnav-scrim{display:none;}
+
+.wrap{max-width:1200px;margin:0 auto;padding:18px 22px 60px;}
+
+/* toolbar */
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+.search{flex:1;min-width:180px;border:1px solid var(--line);border-radius:12px;background:var(--cloud);
+  height:38px;padding:0 13px;font:400 13px var(--sans);color:var(--ink);}
+.btn{border:none;border-radius:12px;font:600 13px var(--sans);cursor:pointer;height:38px;display:inline-flex;align-items:center;padding:0 15px;transition:.15s;}
+.btn-primary{background:var(--lav-deep);color:#fff;box-shadow:0 4px 14px rgba(145,137,192,.3);}
+.btn-primary:active{transform:scale(.97);}
+.btn-ghost{background:rgba(255,255,255,.7);border:1px solid var(--line);color:var(--ink-soft);}
+.pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+/* Single-row element height is fixed so the layout anchor does not move when switching EN/JA(ruby) (acceptance criterion).
+   Bottom-aligned: pills with ruby and those without (AED, etc.) share one text baseline, with ruby floating in the reserved space. */
+.pill-btn{border:1px solid var(--line);background:var(--cloud);color:var(--ink-soft);border-radius:20px;
+  height:38px;padding:0 12px 8px;display:inline-flex;align-items:flex-end;font:500 12px var(--sans);cursor:pointer;}
+.pill-cnt{font-family:var(--num);font-size:10px;font-weight:600;opacity:.65;margin-left:3px;}
+.np-gloss{font-size:12px;color:var(--ink-soft);margin:-6px 2px 12px;line-height:22px;}
+.gen-note{font-size:10.5px;color:var(--ink-faint);margin:8px 2px 6px;line-height:18px;}/* ＊inline explanation (rendered only when a generated name exists; placed at the top of the 周辺ビュー list) */
+.pill-btn.on{background:var(--lav);border-color:var(--lav);color:#4A4470;font-weight:600;}
+
+/* stats — equal-width grid: cells share the same width and auto-equalize row height (they do not stretch with text); minmax gives flexible column widths that wrap on narrow screens without breaking mobile (QA) */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,170px));gap:12px;margin-bottom:16px;}
+.stat{background:rgba(255,255,255,.6);border:1px solid var(--line);border-radius:14px;padding:12px 18px;}
+.stat .v{font-family:var(--num);font-size:26px;font-weight:700;color:var(--ink);}
+.stat .l{font-size:11px;letter-spacing:.5px;color:var(--ink-soft);text-transform:uppercase;margin-top:2px;line-height:1.25;min-height:20px;display:flex;align-items:flex-end;}/* Bottom-aligned: labels with and without ruby share one baseline; min-height reserves ruby space so EN/JA are the same height */
+.stat.warn .v{color:var(--rose-deep);}
+
+/* grid + cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;}
+.card{position:relative;background:rgba(255,255,255,.66);border:1px solid var(--line);border-radius:16px;
+  padding:15px 16px 14px 19px;box-shadow:var(--shadow-card);overflow:hidden;}
+.card .strip{position:absolute;left:0;top:0;bottom:0;width:4px;}
+.s-calm{background:linear-gradient(180deg,#fff,var(--lav));}
+.s-alert{background:linear-gradient(180deg,var(--rose),var(--rose-deep));}
+.s-info{background:linear-gradient(180deg,#DCE6F2,var(--sky-deep));}
+.s-gold{background:linear-gradient(180deg,#fff,var(--gold));}
+.c-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+/* Card text line-heights include ruby (name 31px / meta 24px): JA no longer makes the card taller than EN, so row boundaries land at nearly the same position in both languages */
+.c-name{font-family:var(--serif);font-size:16px;font-weight:600;line-height:31px;}
+.c-line{font-size:12px;color:var(--ink-soft);margin-top:5px;line-height:24px;}
+.dg-sub{font-size:11.5px;font-weight:700;color:var(--ink);margin-top:10px;line-height:22px;}
+.dg-sub:first-of-type{margin-top:4px;}
+.dg-none{color:var(--ink-faint);}
+.dg-hint{font-size:11px;color:#9B6470;margin-top:3px;line-height:20px;}/* 切れた action hint (賞味期限 != safety expiry -> say 替えて, not 捨てて) */
+.dg-lucky{grid-column:1/-1;}/* Lucky-action card spans full width */
+.dg-lucky .c-line{text-align:center;font-size:13px;}
+.c-exp{font-size:12px;font-weight:700;margin-top:5px;}
+.exp-soon{color:var(--gold-deep);}.exp-bad{color:var(--rose-deep);}.exp-ok{color:var(--ink-soft);font-weight:400;}
+.c-gap{font-size:12px;color:#9B6470;margin-top:6px;line-height:1.5;}
+.c-actions{margin-top:10px;display:flex;gap:8px;}
+.icon-btn{border:none;background:rgba(0,0,0,.05);color:var(--ink-soft);border-radius:8px;height:30px;display:inline-flex;align-items:center;padding:0 10px;font-size:12px;cursor:pointer;}
+/* pill ruby overflow fix v3: squeezing headroom did not work on Safari (ruby annotations add extra gap; a bordered pill always shows overflow) -> give real head space instead: pill-btn 32->38, pill 30->34 (added equally to both languages so the EN⇄JA anchor does not move); rt anchored at 8px */
+.pill ruby rt,.pill-btn ruby rt{font-size:8px;line-height:1;}
+.pill{font-size:10px;letter-spacing:.8px;height:34px;display:inline-flex;align-items:flex-end;padding:0 10px 6px;border-radius:20px;white-space:nowrap;}
+.p-calm{color:#6E66A0;background:rgba(208,202,233,.3);}
+.p-alert{color:#9B6470;background:rgba(234,214,219,.5);}
+.p-info{color:#5C7AA0;background:rgba(203,218,238,.5);}
+.p-gold{color:#8A7140;background:rgba(233,222,194,.55);}
+.p-mute{color:var(--ink-soft);background:var(--pearl);}
+.badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px;}
+.note-pending{font-size:11px;color:var(--ink-faint);font-style:italic;margin-top:6px;}
+.empty{color:var(--ink-faint);font-size:13px;padding:30px;text-align:center;}
+.empty-ic{font-size:20px;color:var(--lav-deep);opacity:.55;margin-bottom:6px;}
+/* Status explanation (definition table) */
+.legend{margin:4px 0 14px;border:1px solid var(--line-soft);border-radius:12px;background:rgba(255,255,255,.45);padding:6px 12px;}
+.legend summary{cursor:pointer;font-size:12.5px;color:var(--ink-soft);font-weight:600;list-style:none;}
+.legend summary::-webkit-details-marker{display:none;}
+.legend summary::before{content:'ℹ️ ';}
+.legend-body{margin-top:10px;display:flex;flex-direction:column;gap:7px;padding-bottom:4px;}
+.legend-row{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--ink);line-height:1.5;}
+.legend-row .pill{flex-shrink:0;}
+/* きょう page title: min-height reserves ruby space so the EN/JA anchor stays constant; the date is bottom-aligned to share the title baseline */
+.check-title{display:flex;align-items:flex-end;gap:10px;margin:2px 2px 14px;min-height:34px;}
+.ct-t{font-family:var(--display);font-size:18px;font-weight:700;letter-spacing:.3px;}
+.ct-date{font-size:12.5px;color:var(--ink-soft);padding-bottom:2px;}
+/* 周辺ビュー（Nearby View / Local Pack A）*/
+.np-head{margin-bottom:14px;}
+.np-title{font-family:var(--display);font-size:18px;font-weight:700;letter-spacing:.3px;min-height:34px;display:flex;align-items:flex-end;}/* Reserves ruby space; font unified to display (inner-page titles standardized) */
+.np-sub{font-size:11.5px;color:var(--ink-soft);margin-top:5px;line-height:1.6;}
+.np-sub2{display:inline;}/* desktop one line; mobile wraps (a "Works offline" trailing wrap looked awkward -> parentheses folded into the label, location on its own line) */
+.np-off{color:var(--ink-soft);font-weight:600;}/* Green + ● looked like an online status (clashing with the connection pill) -> neutral color, dot removed */
+.np-prio{display:flex;gap:10px;margin-bottom:16px;}
+.np-pcard{flex:1;background:rgba(255,255,255,.72);border:1px solid var(--line);border-radius:16px;padding:13px 15px 14px;position:relative;overflow:hidden;}
+.np-pcard::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;}
+.np-pcard.shelter::before{background:var(--sky-deep);}.np-pcard.aed::before{background:var(--rose-deep);}
+.np-pl{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-soft);}
+.np-pnm{font-size:14.5px;font-weight:600;margin:5px 0 4px;line-height:1.3;}
+/* Official Japanese name + English fallback (facility-name ruby is never fabricated -> the EN name serves as a readability fallback, always shown in both languages) */
+.np-pen{font-size:11.5px;color:var(--ink-soft);margin:-2px 0 4px;}
+.lens-loc-en{color:#9A8468;font-size:11px;}
+.np-pd{font-family:var(--num);font-size:13px;font-weight:700;color:var(--ink);}
+.np-list{display:flex;flex-direction:column;gap:8px;}
+.np-row{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.6);border:1px solid var(--line);border-radius:13px;padding:11px 14px;}
+.np-ico{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.np-ico.sh{background:rgba(203,218,238,.5);}.np-ico.aed{background:rgba(234,214,219,.55);}
+.aed-badge{font:700 11px var(--num);color:#9B6470;letter-spacing:.5px;}
+.np-mid{flex:1;min-width:0;overflow:hidden;}/* A long facility name wrapped in ruby is an unbreakable atom (JA-only overflow blew up the mobile layout into a zoom) -> contain it within the row */
+.np-nm{font-size:14.5px;font-weight:600;line-height:1.3;}
+.np-meta{font-size:11px;color:var(--ink-soft);margin-top:2px;}
+.np-ico.wp{background:rgba(193,224,224,.55);}
+.np-typ{font-size:10px;letter-spacing:.5px;padding:2px 8px;border-radius:20px;}
+.np-typ.sh{color:#5C7AA0;background:rgba(203,218,238,.5);}.np-typ.aed{color:#9B6470;background:rgba(234,214,219,.5);}.np-typ.wp{color:#3F8585;background:rgba(193,224,224,.5);}
+/* guidance card (types with no offline points: online -> ポータル / offline -> guidance) */
+.np-guide{background:rgba(255,255,255,.65);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-top:4px;}
+.npg-what{font-size:14px;line-height:1.5;}
+.npg-mark{font-size:13px;line-height:1.5;margin-top:9px;padding:9px 11px;background:rgba(247,233,199,.45);border-radius:10px;}
+.npg-note{font-size:11.5px;color:var(--ink-soft);line-height:1.45;margin-top:9px;}
+/* 海抜 (elevation) comparison card (presents hard data, does not judge Safe/Danger) */
+.elev-card{background:rgba(255,255,255,.66);border:1px solid var(--line);border-radius:14px;padding:13px 15px;margin:2px 0 13px;}
+.elev-h{font-size:12px;font-weight:700;color:var(--ink);letter-spacing:.3px;margin-bottom:10px;}
+.elev-row{display:flex;align-items:center;gap:9px;margin-bottom:8px;}
+.elev-ic{font-size:15px;width:18px;text-align:center;flex-shrink:0;}
+.elev-nm{color:var(--ink);width:38%;flex-shrink:0;min-width:0;}
+.elev-role{display:block;font-size:10.5px;color:var(--ink-soft);line-height:20px;min-height:20px;}/* Add role labels to the three rows (highest point = the reference); reserve ruby line-height */
+.elev-fnm{display:block;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.elev-bar{flex:1;height:9px;background:var(--pearl);border-radius:5px;overflow:hidden;}
+.elev-bar i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,#9FC6E0,#7DA86F);}
+.elev-v{font:700 14px Arial,"Helvetica Neue",sans-serif;color:var(--ink);flex-shrink:0;width:50px;text-align:right;}
+.elev-note{font-size:11px;color:var(--ink-soft);line-height:1.45;margin-top:7px;}
+/* ガイド / Guide page */
+.g-intro{font-size:13px;color:var(--ink-soft);margin:2px 2px 14px;line-height:1.5;}
+.g-item{background:rgba(255,255,255,.6);border:1px solid var(--line);border-radius:12px;padding:11px 14px;margin-bottom:9px;}
+.g-term{font-size:13.5px;font-weight:700;color:var(--ink);margin-bottom:3px;}
+.g-desc{font-size:12.5px;color:var(--ink-soft);line-height:1.5;}
+.g-promise{background:rgba(247,233,199,.32);border:1px solid var(--line);border-radius:12px;padding:13px 15px;}
+.g-pr{font-size:12.5px;color:var(--ink);line-height:1.6;margin-bottom:7px;}
+.g-pr:last-child{margin-bottom:0;}
+.np-right{text-align:right;flex-shrink:0;}
+.np-dist{font-family:var(--num);font-size:15px;font-weight:600;color:var(--ink-soft);line-height:1;}/* Pure black 700 was too heavy and clashed with the place name */
+.np-dir{font-size:11px;color:var(--ink-soft);margin-top:3px;}
+/* min-height 42 = fits one line of JA ruby (17px + rt) -> EN/JA title bottoms align, and the page does not shift down when switching language */
+.sec-h{font-family:var(--display);font-size:17px;font-weight:600;letter-spacing:1px;color:var(--ink);margin:18px 2px 10px;min-height:42px;display:flex;align-items:flex-end;}
+/* Profile collapsible sections (mobile is the primary view; keep the page from being one long scroll). Summary reuses .sec-h typography + a rotating chevron. */
+.prof-sec{border-top:1px solid var(--line-soft);}
+.prof-sec>summary.prof-sum{cursor:pointer;list-style:none;align-items:center;justify-content:space-between;}
+.prof-sec>summary.prof-sum::-webkit-details-marker{display:none;}
+.prof-sec>summary.prof-sum::after{content:'▾';font-size:12px;font-weight:400;color:var(--ink-soft);transition:transform .2s;}
+.prof-sec[open]>summary.prof-sum::after{transform:rotate(180deg);}
+.prof-sec-body{padding-bottom:8px;}
+.page-h{font-size:18px;font-weight:700;letter-spacing:.3px;margin:2px 2px 14px;min-height:34px;}/* Standard spec for inner-page titles: used stacked over sec-h so the first title on a page does not eat 42+18top (the root cause of the "extra blank line") */
+
+/* Back-to-top button */
+#to-top{position:fixed;right:18px;bottom:18px;z-index:30;width:44px;height:44px;border-radius:50%;border:1px solid var(--line);
+  background:rgba(255,255,255,.92);color:var(--lav-deep);font:700 18px var(--sans);cursor:pointer;box-shadow:0 4px 14px rgba(60,64,80,.18);
+  display:none;align-items:center;justify-content:center;}
+#to-top.show{display:flex;}
+/* modal */
+.modal-ov{position:fixed;inset:0;background:rgba(60,64,80,.4);backdrop-filter:blur(2px);display:none;
+  align-items:center;justify-content:center;z-index:40;padding:20px;}
+.modal-ov.show{display:flex;}
+.modal{background:var(--cloud);border-radius:18px;box-shadow:var(--shadow-soft);width:100%;max-width:460px;
+  max-height:90vh;overflow-y:auto;padding:22px;}
+.modal h3{font-family:var(--display);font-size:20px;font-weight:600;letter-spacing:1px;margin-bottom:4px;}
+.modal .field{margin-top:12px;}
+.modal label{display:block;font-size:11px;letter-spacing:.5px;color:var(--ink-soft);text-transform:uppercase;margin-bottom:4px;}
+.modal input,.modal select{width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font:400 14px var(--sans);color:var(--ink);background:#fff;}
+.modal .row{display:flex;gap:10px;}.modal .row>*{flex:1;}
+.modal-actions{display:flex;gap:8px;margin-top:18px;}
+.scan-row{display:flex;align-items:center;gap:8px;background:rgba(233,222,194,.18);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:6px;}
+.scan-row .lbl{font-size:11px;color:var(--gold-deep);font-weight:700;letter-spacing:.5px;flex:1;}
+/* match box (scan -> match) */
+.match-box{margin-top:10px;}
+.match-ok{display:flex;align-items:center;gap:7px;font-size:12.5px;color:#5E7A55;background:rgba(206,230,202,.35);border:1px solid rgba(120,160,110,.3);border-radius:10px;padding:9px 12px;}
+.match-confirm{font-size:12px;color:#5C7AA0;background:rgba(203,218,238,.28);border:1px solid rgba(123,153,192,.3);border-radius:10px;padding:10px 12px;}
+.match-confirm .mc-h{font-weight:700;color:#3D4050;display:block;margin-bottom:7px;}
+.chip-rule{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:18px;height:30px;display:inline-flex;align-items:center;padding:0 11px;font:500 12px var(--sans);cursor:pointer;margin:0 5px 5px 0;}
+.chip-rule:hover{border-color:var(--sky-deep);}
+.chip-rule.on{background:var(--sky);border-color:var(--sky-deep);color:#3A4A5E;font-weight:600;}
+.chip-rule .sc{color:var(--ink-faint);font-size:10px;}
+.match-conf{font-size:10px;letter-spacing:.5px;color:var(--ink-faint);margin-left:auto;}
+/* recommend / coverage (v0.4) */
+.cov-bar{height:9px;border-radius:6px;background:var(--pearl);overflow:hidden;margin:4px 0 2px;}
+.cov-bar > i{display:block;height:100%;background:linear-gradient(90deg,var(--lav-deep),var(--sky-deep));}
+.c-target{font-size:12px;color:var(--ink-soft);margin-top:6px;line-height:24px;}
+.c-target b{color:var(--ink);font-weight:700;}
+.c-need{font-size:12px;font-weight:700;color:#9B6470;margin-top:4px;line-height:24px;}
+.s-cover{background:linear-gradient(180deg,#fff,#BFD8B6);}
+.p-cover{color:#5E7A55;background:rgba(206,230,202,.5);}
+/* ready check: image (fallback text) + circular % progress (replaces the line bar) */
+.rc-row{display:flex;align-items:center;gap:11px;}
+.cat-ico{display:flex;justify-content:center;margin-bottom:7px;}
+.cat-ico svg{width:60px;height:72px;}/* Same size as the hero; the old 30px override rule was removed (it was why the icon stayed small) */
+.rc-mid{flex:1;min-width:0;}
+.cov-ring{position:relative;width:54px;height:54px;flex-shrink:0;border-radius:50%;display:flex;align-items:center;justify-content:center;background:conic-gradient(var(--rc) calc(var(--p)*1%),var(--pearl) 0);}
+.cov-ring::before{content:'';position:absolute;width:40px;height:40px;border-radius:50%;background:#fff;}
+.cov-ring span{position:relative;font:700 12.5px Arial,"Helvetica Neue",sans-serif;color:var(--ink);}
+.cov-ring.missing{--rc:#C58A96;}.cov-ring.partial{--rc:#6E97C0;}.cov-ring.unknown{--rc:#C9A86A;}.cov-ring.cover{--rc:#7DA86F;}
+/* Check page: overall-readiness big ring */
+.check-hero{display:flex;flex-direction:column;align-items:center;gap:7px;margin:52px 0 60px;}/* Double the breathing room around the % ring */
+.big-ring{position:relative;width:134px;height:134px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:conic-gradient(var(--rc) calc(var(--p)*1%),var(--pearl) 0);}
+.big-ring::before{content:'';position:absolute;width:102px;height:102px;border-radius:50%;background:#fff;}
+.big-ring .bp{position:relative;font:700 33px Arial,"Helvetica Neue",sans-serif;color:var(--ink);line-height:1;}
+.big-ring .bl{position:relative;font-size:11px;color:var(--ink-soft);margin-top:4px;letter-spacing:.5px;}
+.big-ring.low{--rc:#C58A96;}.big-ring.mid{--rc:#C9A86A;}.big-ring.high{--rc:#7DA86F;}
+.check-sub{font-size:13px;color:var(--ink-soft);font-family:Arial,sans-serif;}
+/* card photo thumb — square container, whole image fit-in proportionally, no cropping or distortion */
+.c-thumb{display:block;width:100%;aspect-ratio:1/1;height:auto;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;}
+/* やさしい日本語 ふりがな（漢字上に ruby）*/
+ruby rt{font-size:.58em;color:var(--ink-soft);font-weight:400;letter-spacing:0;}
+/* profile steppers + storage chips */
+.stepper{display:flex;align-items:center;gap:10px;margin-top:6px;}
+.stepper button{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:18px;cursor:pointer;color:var(--ink);}
+.stepper .val{font-family:var(--num);font-size:22px;font-weight:700;min-width:32px;text-align:center;}
+.loc-chips{display:flex;gap:6px;flex-wrap:wrap;}
+.loc-chip{border:1px solid var(--line);background:#fff;border-radius:18px;padding:6px 12px;font-size:13px;cursor:pointer;color:var(--ink);}
+.loc-chip.on{background:var(--lav);border-color:var(--lav);color:#4A4470;font-weight:600;}
+.loc-chip .x{margin-left:6px;color:var(--ink-faint);}
+/* photo boxes (modal) */
+.photo-row{display:flex;gap:10px;margin-top:6px;}
+.photo-box{flex:1;aspect-ratio:1;border:2px dashed var(--line);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;position:relative;overflow:hidden;background:rgba(255,255,255,.5);}
+.photo-box.has{border-style:solid;border-color:var(--lav-deep);}
+.photo-box img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.photo-box .ph{font-size:24px;opacity:.45;}.photo-box .pl{font-size:11px;color:var(--ink-soft);margin-top:3px;}
+.photo-box input{display:none;}
+
+/* emergency screen */
+.emergency{position:fixed;inset:0;z-index:60;background:#F4EEF0;display:none;flex-direction:column;}
+.emergency.show{display:flex;}
+/* 防災御神籤 / Ready-Kuji overlay (Atelier white + shrine style) */
+.kuji-ov{position:fixed;inset:0;z-index:62;background:rgba(60,52,58,.55);display:none;align-items:center;justify-content:center;padding:20px;}
+.kuji-ov.show{display:flex;}
+.kuji-slip{background:linear-gradient(180deg,#FCFAF7,#F4EFE9);border:1px solid #E4DACF;border-radius:18px;max-width:380px;width:100%;max-height:88vh;overflow-y:auto;padding:22px 22px 18px;box-shadow:0 18px 50px rgba(0,0,0,.28);text-align:center;}
+.kuji-top{font-size:11px;letter-spacing:3px;color:#A9967F;margin-bottom:8px;text-transform:uppercase;}/* Uppercase is CSS styling only; the string stays sentence case (EN rule) */
+.kuji-tier{font-size:46px;font-weight:700;color:#7A5C3E;line-height:1.1;margin:2px 0;}
+.kuji-tier ruby rt{font-size:12px;}/* The default rt .58em would scale with 46px into a giant ruby -> anchor it at 12px */
+.kuji-tier .em{font-size:30px;}
+.kuji-tier-en{font-size:11px;letter-spacing:2px;color:#A9967F;margin-bottom:6px;}
+.kuji-pct{font:700 13px Arial,sans-serif;color:#7DA86F;margin-bottom:14px;}
+.kuji-poem{font-size:16px;line-height:1.85;color:#5A4632;padding:6px 4px 2px;letter-spacing:.5px;}
+.kuji-ai{font-size:10px;font-weight:700;color:#7DA86F;letter-spacing:.5px;}
+/* まとめ dual hero: みくじ筒 | CSS camera side by side. Still by default; a gentle shake only on hover/press. */
+.hero-row{display:flex;gap:12px;margin-bottom:12px;}
+.kuji-hero{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:12px;padding:20px 12px 15px;
+  background:linear-gradient(180deg,#FCFAF7,#F2EBE2);border:1px solid #E4DACF;border-radius:16px;cursor:pointer;}
+/* CSS camera (same craft as the みくじ筒, no emoji to avoid baseline issues): blue-gray body + lens ring + washi highlight */
+.lens-cam-art{width:60px;height:72px;display:flex;align-items:center;justify-content:center;}
+.cam-body{position:relative;width:58px;height:44px;background:linear-gradient(160deg,#8A93B8,#5C7AA0);border-radius:10px;
+  box-shadow:inset 0 3px 0 rgba(255,255,255,.22),0 2px 6px rgba(60,74,102,.28);display:flex;align-items:center;justify-content:center;}
+.cam-body::before{content:'';position:absolute;top:-6px;left:10px;width:16px;height:8px;background:#5C7AA0;border-radius:4px 4px 0 0;}
+.cam-lens{width:24px;height:24px;border-radius:50%;background:#FCFAF7;border:5px solid #3E4A66;box-shadow:inset -2px -2px 0 rgba(0,0,0,.12);}
+.kuji-hero .kuji-omi,.kuji-hero .stick{animation:none;}
+.kuji-hero:hover .kuji-omi,.kuji-hero:active .kuji-omi{animation:komi-shake .9s ease-in-out infinite;}
+.kuji-hero:hover .stick,.kuji-hero:active .stick{animation:komi-stick .9s ease-in-out infinite;}
+.kuji-hero:hover .cam-body,.kuji-hero:active .cam-body{animation:cam-tilt .9s ease-in-out infinite;}
+.kuji-hero:hover .cam-lens,.kuji-hero:active .cam-lens{animation:cam-focus .9s ease-in-out infinite;}
+@keyframes cam-tilt{0%,100%{transform:rotate(-4deg);}50%{transform:rotate(4deg);}}
+@keyframes cam-focus{0%,100%{transform:scale(1);}50%{transform:scale(.8);}}
+.kuji-hero-t{font:700 15px var(--sans);color:#7A5C3E;letter-spacing:.5px;line-height:1.6;}
+/* まとめ 絵馬 board: the digest card = an 絵馬 hanging under a wooden beam */
+.ema-board{background:linear-gradient(180deg,#F7F0E4,#EFE4D2);border:1px solid #E0D2BC;border-radius:16px;padding:13px 13px 15px;}
+.ema-rail{height:6px;border-radius:3px;background:linear-gradient(90deg,#C9B08A,#B49A63,#C9B08A);margin:2px 4px 14px;box-shadow:0 1px 2px rgba(120,90,40,.25);}
+.ema-board .card::after{content:'';position:absolute;top:7px;left:50%;transform:translateX(-50%);width:7px;height:7px;border-radius:50%;background:var(--pearl);border:1px solid #D8C8AC;}
+.ema-board .c-name{text-align:center;}/* Center the digest card title = 絵馬 style */
+.kuji-loading{display:flex;flex-direction:column;align-items:center;gap:14px;padding:24px 0 20px;color:#A9967F;font-size:13px;}
+/* Sparkling draw: the 御神籤 tube shakes, the stick pokes up and down, three ✨ flash in alternation */
+.kuji-omi{position:relative;width:60px;height:72px;transform-origin:50% 88%;animation:komi-shake .9s ease-in-out infinite;}
+@keyframes komi-shake{0%,100%{transform:rotate(-8deg);}50%{transform:rotate(8deg);}}
+.kuji-omi .box{position:absolute;bottom:0;left:12px;width:36px;height:48px;background:linear-gradient(160deg,#C8504E,#A23A38);border-radius:7px 7px 6px 6px;box-shadow:inset 0 3px 0 rgba(255,255,255,.18),0 2px 6px rgba(120,40,40,.3);}
+.kuji-omi .lid{position:absolute;top:20px;left:8px;width:44px;height:12px;background:#7A5C3E;border-radius:7px;box-shadow:0 2px 0 rgba(0,0,0,.12);}
+.kuji-omi .band{position:absolute;bottom:13px;left:12px;width:36px;height:15px;background:rgba(255,255,255,.93);display:flex;align-items:center;justify-content:center;font:700 11px/1 serif;color:#A23A38;}
+.kuji-omi .stick{position:absolute;top:-2px;left:28px;width:5px;height:28px;background:linear-gradient(#F0E2BE,#CDB888);border-radius:3px;transform-origin:bottom;animation:komi-stick .9s ease-in-out infinite;}
+@keyframes komi-stick{0%,100%{transform:translateY(2px) rotate(-5deg);}50%{transform:translateY(-3px) rotate(5deg);}}
+.kuji-spark{position:absolute;font-size:13px;line-height:1;animation:komi-spark 1.1s ease-in-out infinite;}
+.kuji-spark.s1{top:-4px;left:-8px;animation-delay:0s;}
+.kuji-spark.s2{top:14px;right:-10px;animation-delay:.35s;}
+.kuji-spark.s3{bottom:0;left:-6px;animation-delay:.7s;}
+@keyframes komi-spark{0%,100%{opacity:0;transform:scale(.4);}50%{opacity:1;transform:scale(1.1);}}
+.kuji-load-txt{letter-spacing:.5px;}
+/* ---- Lens (防災カメラ) ---- */
+.lens-wrap{max-width:520px;margin:0 auto;}
+.lens-intro{font-size:13px;color:#8A7E70;line-height:1.6;margin-bottom:12px;}
+/* Native zoom slider: shown only when the track reports zoom capability; hidden entirely if unsupported */
+.lens-zoom{display:none;position:absolute;left:14%;width:72%;bottom:12px;z-index:5;accent-color:#F2EBE2;}
+.lens-stage{position:relative;background:#14120E;border-radius:16px;aspect-ratio:3/4;max-height:440px;overflow:hidden;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;}/* Center the camera view (when the aspect-ratio-derived width 330 < wrap 520 it was previously left-aligned) */
+#lens-video{display:none;width:100%;height:100%;object-fit:cover;}
+#lens-preview{display:none;width:100%;height:100%;object-fit:contain;background:#14120E;}
+.lens-ph{font-size:46px;opacity:.45;}
+.lens-frame{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:72%;height:54%;pointer-events:none;}
+.lens-frame .lc{position:absolute;width:26px;height:26px;border:3px solid rgba(255,255,255,.82);}
+.lc.tl{top:0;left:0;border-right:0;border-bottom:0;border-radius:7px 0 0 0;}
+.lc.tr{top:0;right:0;border-left:0;border-bottom:0;border-radius:0 7px 0 0;}
+.lc.bl{bottom:0;left:0;border-right:0;border-top:0;border-radius:0 0 0 7px;}
+.lc.br{bottom:0;right:0;border-left:0;border-top:0;border-radius:0 0 7px 0;}
+/* Overlaid shutter (mobile only; desktop keeps the acts-row Scan button = unchanged). Hidden by default, shown via .lens-stage.cam-on in the mobile media query. */
+.lens-shutter{display:none;position:absolute;left:50%;transform:translateX(-50%);bottom:14px;z-index:6;font:700 15px Arial,sans-serif;background:#F2EBE2;color:#3C342E;border:none;border-radius:26px;height:48px;padding:6px 30px 10px;align-items:flex-end;justify-content:center;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.4);}
+.lens-shutter ruby rt{font-size:8px;line-height:1;}
+.lens-acts{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:14px;}
+.lens-btn{flex:1;min-width:120px;display:inline-flex;align-items:center;justify-content:center;font:600 14px Arial,sans-serif;height:48px;padding:0 14px;border-radius:11px;cursor:pointer;border:1px solid #E4DACF;background:#FCFAF7;color:#3C342E;}
+.lens-btn.cam,.lens-btn.shoot{background:#7A5C3E;color:#fff;border-color:#7A5C3E;}
+.lens-btn.up{display:inline-flex;align-items:center;justify-content:center;}
+.lens-loading{display:flex;align-items:center;gap:10px;color:#8A7E70;font-size:13px;padding:18px 0;}
+.lens-spin{width:22px;height:22px;border:3px solid rgba(122,92,62,.2);border-top-color:#7A5C3E;border-radius:50%;animation:kspin .8s linear infinite;}
+.lens-fail{background:rgba(0,0,0,.04);border-radius:11px;padding:16px;color:#8A7E70;font-size:13.5px;line-height:1.6;text-align:center;}
+.lens-raw{background:#14120E;color:#EDE6DD;border-radius:12px;padding:12px 14px;margin-bottom:12px;}
+.lens-rl{font-size:10px;letter-spacing:1.2px;color:#B3A99C;margin-bottom:5px;}
+.lens-rt{font-size:14px;line-height:1.7;}
+.lens-card{background:#FCFAF7;border:1px solid #E4DACF;padding:14px 15px;margin-bottom:11px;border-radius:0 13px 13px 0;}
+.lens-card.brain{border-left:4px solid #5C7AA0;}
+.lens-card.action{border-left:4px solid #7DA86F;}
+.lens-cl{font-size:13px;font-weight:700;margin-bottom:7px;}
+.lens-card.brain .lens-cl{color:#5C7AA0;}
+.lens-card.action .lens-cl{color:#5E7A55;}
+.lens-cc{font-size:14.5px;line-height:1.75;color:#3C342E;}
+.lens-cc.big{font-size:16px;line-height:1.95;}
+.lens-cc-en{font-size:12.5px;color:#8A7E70;margin-top:6px;line-height:1.55;}
+.lens-honest{font-size:12px;color:#8A7E70;line-height:1.6;margin-top:8px;background:rgba(0,0,0,.03);border-radius:9px;padding:9px 11px;}
+/* Lens backbone: local hard data below For My Action (actionable during a disaster) */
+.lens-local{background:#FCFAF7;border:1px solid #E4DACF;border-radius:13px;padding:13px 15px;margin-bottom:11px;}
+.lens-local-h{font-size:12.5px;font-weight:700;color:#7A5C3E;margin-bottom:9px;}
+.lens-loc-row{display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid #F0EBE3;}
+.lens-loc-row:last-of-type{border-bottom:0;}
+.lens-loc-ic{width:20px;text-align:center;flex:0 0 20px;}
+.lens-loc-nm{flex:1;font-size:12.5px;color:#6E6258;line-height:1.6;}
+.lens-loc-fac{display:block;font-size:15px;font-weight:500;color:#3C342E;margin-top:3px;letter-spacing:.2px;}
+.lens-loc-d{font-family:var(--num);font-size:14px;font-weight:600;color:var(--ink);white-space:nowrap;}
+.lens-local-note{font-size:11.5px;color:#8A7E70;line-height:1.5;margin-top:8px;}
+/* Backbone extension: Lens 給水所 context -> pull water-related items from stock (reminds you to bring them, does not judge sufficiency) */
+.lens-kit{background:#F7FAF9;border:1px solid #CFE0DB;border-radius:13px;padding:13px 15px;margin-bottom:11px;}
+.lens-kit-h{font-size:12.5px;font-weight:700;color:#3E6A5C;margin-bottom:9px;}
+.lens-kit-row{display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid #E6EFEC;}
+.lens-kit-row:last-of-type{border-bottom:0;}
+.lens-kit-ic{width:20px;text-align:center;flex:0 0 20px;}
+.lens-kit-nm{flex:1;font-size:13.5px;color:#3C342E;line-height:1.5;}
+.lens-kit-d{font-size:12px;color:#6E837C;white-space:nowrap;}
+.lens-kit-note{font-size:10.5px;color:#6E837C;line-height:1.45;margin-top:8px;}
+/* Lens failure/offline -> graceful handoff to Emergency */
+.lens-fail-emer{display:block;width:100%;margin-top:12px;padding:11px 14px;border:0;border-radius:11px;background:#C0392B;color:#fff;font-size:14px;font-weight:700;cursor:pointer;}
+.lens-fail-emer:hover{background:#A93226;}
+/* AI-unavailable demo state (lets reviewers experience the deterministic degradation firsthand. Not Offline Mode, not a cold start) */
+/* Local guidance mode = the designed second layer (a mode, not an error) -> use a light-purple "mode feel", not alarm yellow */
+.ai-demo-banner{background:#EEF0FA;border:1px solid #C9CEE9;color:#4A4E86;font-size:12px;line-height:1.55;border-radius:10px;padding:9px 12px;margin-bottom:12px;}
+.lens-paused{background:#F7F8FC;border:1px solid #D8DCEC;border-radius:13px;padding:15px 16px;font-size:13.5px;color:#3C342E;line-height:1.6;}
+.lg-card{background:#F7F8FC;border:1px solid #D8DCEC;border-radius:13px;padding:14px 15px;}
+.lg-desc{font-size:13px;color:#4A4640;line-height:1.6;margin-bottom:10px;}
+.lg-btn{display:block;width:100%;padding:10px 14px;border:0;border-radius:11px;background:#6E6AB0;color:#fff;font-size:14px;font-weight:700;cursor:pointer;}
+.lg-btn:hover{filter:brightness(0.95);}
+/* Plain-language label for what Ready Check counts (replaces the internal rule picker; the internal mechanism stays hidden, only plain language is shown) */
+.rc-note{font-size:11.5px;border-radius:9px;padding:7px 11px;margin-bottom:6px;line-height:1.5;}
+.rc-yes{background:#EAF3EA;color:#3E6A4A;border:1px solid #CDE3CD;}
+.rc-no{background:#F4F1EC;color:#8A7E70;border:1px solid #E4DACF;}
+/* Auto-computed field (TARGET) is grayed out and read-only, so user input is not overwritten by the system (a frustrating loop) */
+.m-auto{background:#F1EEE9;color:#8A7E70;cursor:not-allowed;}
+/* Official-source citation (legal risk: any "recommended amount" must carry its source + 目安 caveat; be honest about official vs common knowledge) */
+/* line-height 22px = line height including JA ruby, so EN/JA lines are the same height (the page's vertical rhythm is language-independent) */
+.src-note{font-size:11px;color:#8A7E70;line-height:22px;background:rgba(0,0,0,.03);border-radius:9px;padding:8px 11px;margin:2px 2px 12px;}
+/* Source-tier badge (do not label the whole thing official; public guidance / common practice / household-specific) */
+.c-src{margin-top:9px;}
+/* kit-card baby/pet tag (auto-attached when entered from either category) */
+.kit-tag-row{margin-top:4px;}
+.kit-tag{display:inline-flex;align-items:flex-end;height:26px;padding:0 9px 4px;border-radius:13px;font-size:10px;letter-spacing:.5px;}
+.kt-baby{color:#9B6470;background:rgba(232,160,166,.22);}
+.kt-pet{color:#8A7148;background:rgba(217,179,106,.22);}
+/* RC baby/pet container (separated from the always-on items = easier to use and manage) */
+.rc-group{margin-top:18px;background:rgba(255,255,255,.38);border:1px solid var(--line-soft);border-radius:16px;padding:12px 14px 14px;}
+.rc-group-h{font-family:var(--display);font-weight:700;font-size:14.5px;letter-spacing:.4px;min-height:30px;display:flex;align-items:flex-end;margin:0 2px 10px;}/* Reserve ruby space = anchor both languages */
+/* RC card sections (name on its own line / pill on its own line / notes in a tinted box = visual separation, not crowded) */
+.rc-pill-row{margin:3px 0 0;}
+.rc-mid .c-target{margin-top:7px;}
+.rc-note-box{margin-top:10px;background:var(--pearl);border:1px solid var(--line-soft);border-radius:9px;padding:8px 10px;font-size:12px;color:var(--ink-soft);line-height:24px;}
+.src-badge{display:inline-block;font-size:10px;font-weight:700;border-radius:7px;padding:2px 7px;}
+.sb-guidance{background:#EAF0F7;color:#3E5F86;}
+.sb-common{background:#F5F0E8;color:#8A6E45;}
+.sb-household{background:#EDEAF3;color:#5E5090;}
+/* Real 出典 (source) clickable links (replace the fake "Check for updates" button) */
+.src-links{display:flex;flex-direction:column;gap:6px;margin:0 2px 12px;}
+.src-link{font-size:12px;color:#3E5F86;text-decoration:none;padding:8px 11px;background:#EAF0F7;border-radius:9px;line-height:1.4;}
+.src-link:hover{background:#DCE7F3;}
+.lens-title{font-family:var(--display);font-size:18px;font-weight:700;color:var(--ink);letter-spacing:.3px;min-height:34px;display:flex;align-items:flex-end;margin:2px 2px 14px;}/* Standard inner-page title spec (18/700/reserve 34/bottom-aligned) */
+.kuji-f{text-align:left;border-top:1px dashed #E0D5C8;padding:11px 2px 0;margin-top:11px;}
+.kuji-fl{font-size:11px;font-weight:700;letter-spacing:1px;color:#B08968;margin-bottom:3px;}
+.kuji-ft{font-size:13px;line-height:1.55;color:var(--ink);}
+.kuji-note{font-size:11px;color:var(--ink-soft);line-height:1.45;margin-top:14px;background:rgba(247,233,199,.4);border-radius:9px;padding:9px 11px;text-align:left;}
+.kuji-acts{display:flex;gap:9px;margin-top:15px;}
+.kuji-acts button{flex:1;border:none;border-radius:11px;height:42px;display:inline-flex;align-items:center;justify-content:center;padding:0 11px;font:600 13px var(--sans);cursor:pointer;}
+.kuji-close{background:rgba(0,0,0,.06);color:var(--ink-soft);}
+.kuji-again{background:#7A5C3E;color:#fff;}
+.kuji-launch{display:flex;align-items:center;justify-content:center;width:100%;height:56px;margin:0 0 16px;border:1px solid #E4DACF;background:linear-gradient(180deg,#FCFAF7,#F2EBE2);color:#7A5C3E;border-radius:14px;padding:0 14px;font:700 15px var(--sans);cursor:pointer;letter-spacing:.5px;}
+.emergency-head{background:#C0392B;color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;}
+.emergency-head .t{font:700 16px var(--sans);letter-spacing:2px;display:flex;align-items:center;gap:8px;}
+.emergency-head button{background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.5);color:#fff;border-radius:10px;height:38px;display:inline-flex;align-items:center;padding:0 13px;font:600 13px var(--sans);cursor:pointer;}
+.emer-head-right{display:flex;gap:8px;align-items:center;}
+.emer-lang{display:flex;border:1px solid rgba(255,255,255,.5);border-radius:18px;overflow:hidden;}
+.emer-lang button{border:none;background:transparent;color:#fff;font:600 11px var(--sans);height:36px;display:inline-flex;align-items:center;padding:0 11px;cursor:pointer;border-radius:0;}
+.emer-lang button.on{background:rgba(255,255,255,.28);}
+.emergency-body{flex:1;overflow-y:auto;padding:20px;max-width:560px;margin:0 auto;width:100%;}
+/* Fixed height: EN/JA(ruby) switch does not jump (app-wide UX principle) */
+.off-chip{display:inline-flex;align-items:center;gap:6px;font:700 11px var(--sans);letter-spacing:1px;color:#5A5E72;background:#E8E2E4;height:32px;padding:0 13px;border-radius:20px;margin-bottom:14px;}
+.emer-card{background:#fff;border:2px solid var(--rose-deep);border-left:8px solid #C0392B;border-radius:14px;padding:20px;box-shadow:0 4px 16px rgba(0,0,0,.1);}
+.emer-card .lead{font:700 11px var(--sans);letter-spacing:3px;text-transform:uppercase;color:#A33B4E;margin-bottom:10px;}
+.emer-card .point{font:700 23px var(--sans);color:#23252F;line-height:1.3;}
+.emer-card .dist{font:600 15px var(--sans);color:#3D4050;margin-top:4px;}
+.emer-card .kitgap{margin-top:14px;padding:12px 14px;background:#F3F0F7;border:1px solid var(--platinum);border-radius:10px;font:600 14px var(--sans);color:#3D4050;}
+.emer-card .kitgap .kl{display:block;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#7C7FA0;margin-bottom:4px;}
+.point-en{font-size:13px;color:#5A5E72;margin-top:2px;}
+.emer-card .action{font:600 17px var(--sans);color:#1F2129;line-height:1.5;margin:14px 0;}
+.emer-card .why{font-size:14px;color:#3D4050;}
+.emer-card .caution{margin-top:14px;padding:13px 14px;background:#FBEEF0;border:1px solid var(--rose-deep);border-radius:10px;font:700 14.5px var(--sans);color:#8E2E40;line-height:1.5;}
+.emer-card .caution .cl{display:block;font-size:10.5px;letter-spacing:2px;text-transform:uppercase;color:#A33B4E;margin-bottom:4px;}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);opacity:0;background:var(--ink);color:#fff;font-size:13px;padding:10px 18px;border-radius:20px;pointer-events:none;transition:.25s;z-index:80;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+/* UI-3 mobile: keep the saved-data toggle full-text (it is an entry reviewers need to operate);
+   only shrink the connection pill to a dot (pure status light, offline banner provides the text fallback).
+   row1 = brand + Emergency (Emergency always top-right, no longer pushed to a third row); row2 = language toggle + dot + saved-data toggle (full text,
+   flex-wrap on very narrow screens without overflow). Tabs use the overflow-x scroll above. */
+@media(max-width:640px){
+  /* Mobile header restructure (Alertus pattern): centered vertical stack = brand -> status caption (smallest) -> Emergency button (largest) -> utility pills (second smallest) */
+  .topbar-in{padding:10px 14px 8px;gap:7px;flex-direction:column;align-items:center;}
+  .brand{font-size:19px;}
+  .brand-mark{width:14px;}
+  .brand-sub{display:none;}
+  .topbar-in .spacer{display:none;}
+  .emergency-btn{margin:0;height:46px;width:min(300px,82%);font-size:14px;}
+  .topbar-in>div:first-child{flex:none;width:100%;}
+  .brand-row{justify-content:center;flex-direction:column;gap:4px;}/* brand truly centered + status caption directly below */
+  .topbar-ctrls{order:1;flex-basis:auto;width:100%;gap:10px;flex-wrap:nowrap;justify-content:center;margin-top:12px;}/* Two pills pulled toward center; margin-top separates them from the Emergency button to prevent mis-taps */
+  /* Right-handed thumb zone: language toggle moved to the far right of row2 (mobile QA); row2 shrunk to 34 = system-status-bar feel, does not compete with the Emergency button */
+  .lang-toggle{order:9;margin-left:0;height:26px;}
+  .lang-toggle button{font-size:10px;padding:0 10px;}
+  .lg-pill{height:26px;width:112px;font-size:10px;}/* The モード wording is zero-ruby -> shrink to 26 */
+  .demo-status-pill{height:18px;padding:0 8px;font-size:10px;border:none;background:transparent;gap:4px;}/* Status = smallest caption text (~8pt), not a pill */
+  .wrap{padding:16px 16px 92px;}/* Make room for the bottom bar */
+  .np-sub2{display:block;margin-top:3px;}/* mobile: location + 出典 on their own line */
+  /* Lens one-screen camera (v2, replaces the earlier shrunken-idle-box approach):
+     idle = NO stage at all (title + intro + two big buttons, zero scroll);
+     camera on / photo loaded = stage appears at full working size, height capped to the viewport (~55dvh)
+     so header + stage + shutter always fit ONE screen; the Scan shutter is overlaid inside the stage
+     (real-camera-app pattern: eyes on the viewfinder, thumb on the shutter, same screen). */
+  .lens-wrap{display:flex;flex-direction:column;}
+  .lens-title{order:1;}.lens-intro{order:2;}.lens-acts{order:3;margin-bottom:12px;}.lens-stage{order:4;}.lens-paused{order:4;}.lens-result{order:5;}
+  .lens-btn{font-size:13px;padding:0 8px;min-width:0;}/* keep the "写真をアップロード" button from wrapping (field-test photo #2) */
+  .lens-stage{display:none;}
+  .lens-stage.live{display:flex;max-height:min(420px,55vh);max-height:min(420px,55dvh);}
+  #lens-shoot{display:none!important;}/* mobile shutter lives inside the stage (.lens-shutter); the acts-row Scan button is desktop-only */
+  .lens-stage.cam-on .lens-shutter{display:inline-flex;}
+  .lens-zoom{bottom:80px;}/* zoom slider sits just above the overlaid shutter */
+  .tabs{display:none;}/* mobile navigation = bottom bar; desktop keeps the single top row */
+  .bnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:30;background:rgba(251,251,254,.96);backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:5px 6px calc(6px + env(safe-area-inset-bottom));gap:2px;}
+  .bnav button{flex:1;min-width:0;border:none;background:transparent;color:var(--ink-soft);font:600 10.5px var(--sans);height:46px;display:inline-flex;align-items:flex-end;justify-content:center;padding:0 2px 8px;border-radius:10px;cursor:pointer;white-space:nowrap;}
+  .bnav ruby rt{font-size:8px;line-height:1;}
+  .bnav button.on{background:var(--lav);color:#4A4470;}
+  .bnav button.bl-lens{background:#F5EEDC;color:#8A7140;}
+  .bnav button.bl-lens.on{background:var(--gold);color:#6B5730;}
+  .bnav-scrim{position:fixed;inset:0;z-index:28;background:rgba(20,18,14,.35);}
+  .bnav-more{position:fixed;left:12px;right:12px;bottom:calc(66px + env(safe-area-inset-bottom));z-index:29;background:var(--cloud);border:1px solid var(--line);border-radius:14px;padding:7px;box-shadow:0 10px 26px rgba(30,28,50,.16);}
+  .bnav-more button{display:flex;width:100%;border:none;background:transparent;text-align:left;font:600 13px var(--sans);color:var(--ink);padding:13px 11px;border-radius:9px;cursor:pointer;}
+  .bnav-more button.on{background:var(--lav);color:#4A4470;}
+  #to-top{bottom:calc(72px + env(safe-area-inset-bottom));}/* Float above the bottom bar */
+  /* tabs horizontal-scroll -> wrap (the roll design was poor); shrink padding/gap so EN/JA both fit in two rows */
+  /* Three-row regression fix (guide orphaned after the tab reorder): gap 6->4, padding 10->6, min-width snapped to each language's real width -> two rows at >=375px; 360px old devices may still be three rows (honest note) */
+  /* Visual grouping (option 1): two centered rows + tightened row-gap + full-width tinted band = the 7 tabs read as "one grid that wrapped" rather than two nav layers; active state goes from underline to light-purple fill (underline = nav hint, fill = segmented-group hint). Side padding 14 / column-gap 4 / min-width table all unchanged = wrapping arithmetic stays identical to the regression fix */
+  .tabs{padding:6px 14px 8px;gap:2px 4px;flex-wrap:wrap;overflow-x:visible;justify-content:center;background:var(--moon-2);border-top:1px solid var(--line-soft);}
+  /* active state reverts to underline (light-purple fill worsened the ruby-baseline mismatch) = same as desktop; grouping is carried by centering + the tinted band */
+  /* Each tab gets a near-white-purple chip (--moon, one step lighter than the band) + a very faint border = clearly bounded 4-over-3 cells; active underline unchanged, Lens gold chip unchanged */
+  .tabs button{height:42px;padding:0 5px 8px;font-size:12.5px;background:var(--moon);border:1px solid var(--line-soft);border-bottom:2px solid transparent;border-radius:11px;}/* padding 6->5 + 1px border = total width unchanged, so two-row wrapping arithmetic stays intact */
+  /* mobile per-slot min-width (shrunk values; order lens/きょう/備えチェック/防災セット/周辺ビュー/マイデータ/ガイド) -> EN/JA wrap at the same positions = row composition is language-independent */
+  .tabs button:nth-child(1){min-width:70px;}
+  .tabs button:nth-child(2){min-width:54px;}
+  .tabs button:nth-child(3){min-width:94px;}
+  .tabs button:nth-child(4){min-width:116px;}
+  .tabs button:nth-child(5){min-width:82px;}
+  .tabs button:nth-child(6){min-width:78px;}
+  .tabs button:nth-child(7){min-width:52px;}
+  /* Larger font on mobile (bolder text inside boxes); line-height keeps the ruby-inclusive rhythm */
+  .pill{font-size:11px;height:36px;}
+  .stat .l{font-size:12px;line-height:1.25;min-height:22px;}
+  .c-target,.c-need,.c-line{font-size:13px;line-height:25px;}
+  .src-badge{font-size:11px;}
+  /* Nearby mobile tuning: top cards stack full-width, names/distances enlarged, meta bumped up */
+  .np-prio{flex-direction:column;}
+  .np-pnm{font-size:16px;}
+  .np-pen{font-size:12px;}
+  .np-pd{font-size:14px;}
+  .np-nm{font-size:16px;}
+  .np-meta{font-size:12px;margin-top:4px;}
+  .np-dist{font-size:16px;}
+  .np-dir{font-size:12px;}
+  .np-row{padding:12px 13px;}
+  .fam-grid{grid-template-columns:repeat(2,1fr);}/* My family steppers: two per row on mobile (scoped class, does not affect the global .grid) */
+}
+@media(max-width:389px){
+  /* Very narrow phones — iPhone SE and smaller, common among elderly / caregiver users in Japan. The auto-fit stats grid otherwise drops to a single column here; pin it to two so the Kit and Ready Check header stays two-per-row. minmax(0,1fr) lets the cells shrink to fit without overflowing. */
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-in">
+    <div><div class="brand-row"><div class="brand"><svg class="brand-mark" viewBox="0 0 24 30" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 2.2c-2.6 0-4.3 1.8-4.3 3.8 0 1.4.8 2.6 2 3.2" fill="none" stroke="#B49A63" stroke-width="1.6" stroke-linecap="round"/><path d="M12 2.2c2.6 0 4.3 1.8 4.3 3.8 0 1.4-.8 2.6-2 3.2" fill="none" stroke="#B49A63" stroke-width="1.6" stroke-linecap="round"/><path d="M7.2 9.6 12 7l4.8 2.6c1 .5 1.6 1.5 1.6 2.6v12.1c0 2-1.6 3.6-3.6 3.6H9.2c-2 0-3.6-1.6-3.6-3.6V12.2c0-1.1.6-2.1 1.6-2.6Z" fill="#9189C0"/><path d="m12 13.2 1 2 2.1.3-1.5 1.5.3 2.1-1.9-1-1.9 1 .3-2.1-1.5-1.5 2.1-.3Z" fill="#FCFAF7"/></svg><span class="brand-t">Digital<span class="star">✦</span>Omamori</span></div><span class="demo-status-pill" id="demo-status-pill"><span class="demo-status-dot"></span><span id="demo-status-pill-l">Online</span></span></div><div class="brand-sub" id="tagline">Turn everyday readiness into emergency action.</div></div>
+    <div class="spacer"></div>
+    <div class="topbar-ctrls">
+      <div class="lang-toggle"><button id="lang-en" class="on" onclick="App.setLang('en')">EN</button><button id="lang-ja" onclick="App.setLang('ja')">やさしい</button></div>
+      <button class="lg-pill" id="lg-pill" onclick="App.toggleAiDemo()"><span id="lg-pill-l">Try offline demo</span></button>
+    </div>
+    <button class="emergency-btn" id="emer-btn" onclick="App.openEmergency()">⚠ <span id="emer-btn-l">Emergency</span></button>
+  </div>
+  <div class="tabs" id="tabs"></div>
+</div>
+<div class="wrap" id="wrap"></div>
+<div class="bnav-scrim" id="bnav-scrim" onclick="App.moreClose()"></div>
+<div class="bnav-more" id="bnav-more"></div>
+<nav class="bnav" id="bnav" aria-label="Main navigation"></nav>
+<button id="to-top" aria-label="Back to top" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<div class="modal-ov" id="modal-ov"><div class="modal" id="modal"></div></div>
+<div class="emergency" id="emergency"></div>
+<div class="kuji-ov" id="kuji"></div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import * as C from './app/core.js';
+// The app clock uses the real date (so expiry calculations are correct when reviewers operate it live = credible KPI).
+// C.DEMO_NOW is kept for test injection; the old screenshot-consistency need is handled by re-taking screenshots.
+const NOW = new Date();
+const APP_VERSION = 'Prototype V11';  // Single product-iteration version (V11 = coverage-consistency + honest-seed phase). Shown in subtitle; change history = dated CHANGELOG.
+
+const UI = {
+  en:{tagline:'Turn everyday readiness into emergency action.',emergency:'Emergency',lgTry:'Offline mode',lgExit:'Offline mode ON',connOnline:'Online',connOffline:'Offline',connSimOffline:'Offline · simulated',toastDeleted:'Deleted',photoPreviewNote:'📷 Preview only (not saved in this prototype)',emChipNormal:'From saved local data · works offline',emChipSaved:'Offline mode · using saved data',
+    emptyNote:'Nothing here yet',
+    tabs:{kit:'My Emergency Kit',recommend:'Ready Check',pack:'Nearby View',check:'Today',profile:'Profile',guide:'Guide',lens:'Lens'},
+    kitDesc:'Everything you have at home, in one list.',
+    np:{title:'Nearest official support points',demoLoc:'My place',dataSrc:'Minato City official data',offline:'Works offline',coming:'This category — official data is being added.',portalBtn:'Check live status — Minato disaster portal ↗',markLabel:'Look for this in real life',elevTitle:'Elevation · official GSI data',elevYou:'Your location',elevNote:'Elevation above sea level, from official GSI data. How high is safe depends on the disaster type — check the Minato City hazard map.'},
+    kuji:{launch:'Draw your lucky omikuji',lensGo:'Read signs with Lens',title:'Today’s omikuji',readiness:'Readiness',f_tip:'Disaster tip',again:'Draw again',close:'Close',generating:'Drawing your fortune…',aiMark:'AI',note:'Your luck level comes from your real readiness. This omikuji is here to cheer you on. In a real emergency, follow official guidance.'},
+    rec:{title:'Ready Check: your household guide',desc:'Your household guide — based on your household size, public preparedness guidance, and common household preparedness practices.',pct:'Covered',need:'To prepare:',add:'+ Add to my kit',have:'Have:',groupInfant:'For your baby',groupPet:'For your pet',extraName:'Extra kit items',extraDesc:'Items that matter for your household but are not counted in Ready Check targets. Examples: helmets, child comfort items, passport copies, spare glasses, chargers.',extraAdd:'+ Add extra item',sum:{covered:'Covered',items:'Types covered',toAdd:'Still to get',inProgress:'Almost there'},lvl:{guidance:'Public guidance',common:'Common preparedness',household:'Household-specific'},
+      st:{covered:'Ready',covered_expiring:'Ready · rotate',partial:'Almost ready',missing:'Prepare next',unknown:'Unverified'}},
+    match:{ok:(n)=>`Matched to “${n}” · auto-classified ✓`,ask:'Low confidence — which item is this?',none:'No auto-match — please pick:',other:'Other (manual)',conf:(p)=>`conf ${p}%`},
+    prof:{title:'My profile',family:'My family',adults:'Adults',children:'Children',infants:'Babies',pets:'Pets',days:'Days of supply',targetNote:'Enter how many people live with you. Digital Omamori calculates how much water, food, toilet supplies and more your home needs.',babyNote:'👶 Milk, diapers, baby food and similar. Every baby needs different amounts — the app only checks that you have a stock ready. You decide how much.',listTitle:'What your household needs',storage:'Storage places',storageNote:'Used as “Stored at” buttons when adding items.',addStorage:'+ Add place',address:'Home address',addressPh:'e.g. 麻布図書館',addressNote:'Prototype note: My Places currently uses preloaded sample places only. No address search, GPS, or map API.',saved:'Saved',location:'My places',locDesc:'Choose a place you care about, such as home, school, or workplace. Digital Omamori shows nearby support points and elevation.',setDemo:'Set place',current:'Current place',demoSet:'Place set',demoNotFound:'Resolves saved sample locations only — pick a suggestion below.',useLoc:'📍 Use my location',nearestIs:'Nearest shelter',noLoc:'Pick a place below, or type one.',geoNo:'Location not available',geoWait:'Locating…',geoOk:'Location saved',geoFail:'Could not get location',addPlacePrompt:'New storage place name:',packTitle:'Saved local data',packDesc:'Digital Omamori keeps local disaster data on your device, such as shelters, water points, AEDs, elevation, and preparedness guidance. Emergency Mode can use this saved data after the app has loaded.',packAuto:'Auto-update when online',packConsent:'Choose which saved data Digital Omamori may update in future versions.',packAll:'Enable all',packBtn:'Check for updates',packChecking:'Checking…',packUpToDate:'Up to date',packCheckedNow:'Last checked: just now',packLast:'Data date',packSource:'Source',srcTitle:'Sources',srcIntro:'Local safety data and preparedness guidance are based on these public sources:',portalTitle:'Live status (when online)',portalDesc:'Saved local data shows official facility locations. Whether a facility is actually open right now comes from Minato City’s official disaster portal — check it when you have internet.',portalLink:'Open Minato disaster portal ↗'},
+    fBuyStore:'Store (where bought)',fStoredBtns:'Stored at',photoFront:'Front photo',photoLabel:'Label / 賞味期限',photoHint:'JPG / PNG only',photoType:'JPG / PNG only — iPhone HEIC not supported (use a screenshot or convert first).',
+    search:'Search…',add:'+ Add extra item',
+    ready:'Ready to use',total:'Things you have',expiring:'Expiring',low:'Running low',missing:'To restock',
+    save:'Save',cancel:'Cancel',del:'Delete',edit:'Edit',
+    fName:'Name (EN)',fNameJa:'Name (JA)',fCat:'Category',fQty:'Quantity',fTarget:'Recommended for your household',fExp:'Expiry (賞味期限)',fStore:'Stored at',srcNote:'Your household guide — estimated from your household size, public preparedness guidance, and common household preparedness practices.',
+    addTitle:'Add to my kit',editTitle:'Edit supply item',
+    qtyL:(q,t)=>t?`Qty ${q} / ${t}`:`Qty ${q}`,store:'Stored:',expIn:(d)=>`${d}d left`,expired:'Expired',
+    packAge:(d)=>`Data as of ${d} · works offline`,
+    expiredHint:'Replace them with fresh ones.',asNeeded:'As needed',asNeededT:'Target: as needed',
+    checkTitle:'Today’s omamori',checkExpiring:'Expiring / expired',checkLow:'Low / missing',checkCats:'Missing categories',checkPack:'Saved local data',checkToday:'Today’s lucky action',
+    emerLead:'Next action',offline:'Offline · from saved data',why:'Why this place appears',caution:'Before you move',yourKit:'Your kit',emCarry:'Bring from your kit: ',emNoCarry:'No specific item to bring is suggested here. Check your surroundings first, and follow official instructions when available.',close:'Close',allReady:'All key supplies ready 🎉',
+    typeAll:'All',cat:{water:'Water',food:'Food',toilet:'Toilet',cooking:'Cooking',light:'Light',power:'Power',info:'Info',medical:'Medical',cash:'Cash',hygiene:'Hygiene',child:'Child',pet:'Pet supplies',tools:'Tools',other:'Other'},
+    defsTitle:'What the statuses mean',stDef:{ready:'You have enough (meets your target).',low:'You have some, but less than the target.',expiring_soon:'Expires within ~30 days — use and replace.',expired:'Past its date.',missing:"You don't have it yet (0).",not_checked:'Contents / expiry not verified yet.'},
+    st:{ready:'Ready',low:'Low',expiring_soon:'Expiring soon',expired:'Expired',missing:'Missing',not_checked:'Not checked'}},
+  ja:{tagline:'普段（ふだん）の 備（そな）えを、非常時（ひじょうじ）の 行動（こうどう）へ。',emergency:'緊急（きんきゅう）',lgTry:'オフラインモード',lgExit:'オフラインモード ON',connOnline:'オンライン',connOffline:'オフライン',connSimOffline:'オフラインモード',toastDeleted:'削除（さくじょ）しました',photoPreviewNote:'📷 プレビューのみ（この プロトタイプでは 保存（ほぞん）されません）',emChipNormal:'アプリに 保存（ほぞん）して ある データから · オフラインでも 使（つか）えます',emChipSaved:'オフラインモード · アプリの データを 使（つか）って います',
+    emptyNote:'まだ ありません',
+    tabs:{kit:'防災（ぼうさい）セット',recommend:'備（そな）え チェック',pack:'周辺（しゅうへん）ビュー',check:'きょう',profile:'マイデータ',guide:'ガイド',lens:'レンズ'},
+    kitDesc:'家（いえ）に ある 備（そな）えの リストです。',
+    np:{title:'近（ちか）くの 支援点（しえんてん）',demoLoc:'選（えら）んだ 場所（ばしょ）',dataSrc:'港区（みなとく）の 公式（こうしき）データ',offline:'オフラインでも 使（つか）えます',coming:'このタイプは 準備中（じゅんびちゅう）。公式（こうしき）データを 集（あつ）めて います。',portalBtn:'今（いま）の 状況（じょうきょう）を 見（み）る — 港区（みなとく）防災（ぼうさい）ポータル ↗',markLabel:'まちで この マークを さがして',elevTitle:'海抜（かいばつ）· 国土地理院（こくどちりいん）データ',elevYou:'あなたの 場所（ばしょ）',elevNote:'海抜（かいばつ）は 国土地理院（こくどちりいん）の データです。どのくらいの 高（たか）さが 安全（あんぜん）かは、災害（さいがい）の 種類（しゅるい）で ちがいます。港区（みなとく）の ハザードマップで 確認（かくにん）して ください。'},
+    kuji:{launch:'防災（ぼうさい）おみくじを 引（ひ）く',lensGo:'レンズで サインを 読（よ）む',title:'防災（ぼうさい）おみくじ',readiness:'備（そな）え',f_tip:'防災（ぼうさい）ひとくち',again:'もう一度（いちど）',close:'閉（と）じる',generating:'おみくじを 引（ひ）いて います…',aiMark:'AI生成（せいせい）',note:'運（うん）の 強（つよ）さは、あなたの 本当（ほんとう）の 備（そな）えからです。あなたを 応援（おうえん）する おみくじです。災害（さいがい）の ときは 港区（みなとく）や 役所（やくしょ）の お知（し）らせを 見（み）て ください。'},
+    rec:{title:'あなたの 家（いえ）の 備（そな）えチェック',desc:'あなたの 家（いえ）の 目安（めやす）です。家族（かぞく）の 人数（にんずう）に 合（あ）わせて います。国（くに）や 東京都（とうきょうと）の ガイドと、みんなが よく する 備（そな）えを もとに して います。',pct:'そろい具合（ぐあい）',need:'用意（ようい）する 目安（めやす）：',add:'+ 防災（ぼうさい）セットに 追加（ついか）',have:'今（いま）ある：',groupInfant:'赤（あか）ちゃんの 備（そな）え',groupPet:'ペットの 備（そな）え',extraName:'その他（た）の 備（そな）え',extraDesc:'備（そな）えチェックの 目安（めやす）には 数（かぞ）えません。でも、あなたの 家（いえ）に 必要（ひつよう）な ものは ここから 追加（ついか）できます。例（れい）：ヘルメット、子（こ）どもの 安心（あんしん）グッズ、身分証（みぶんしょう）コピー、めがね、充電（じゅうでん）ケーブル。',extraAdd:'+ その他（た）の 備（そな）えを 追加（ついか）',sum:{covered:'そろい具合（ぐあい）',items:'そろった 種類（しゅるい）',toAdd:'まだ ない もの',inProgress:'あと 少（すこ）しの もの'},lvl:{guidance:'国（くに）や 都（と）の ガイド',common:'一般的（いっぱんてき）な 備（そな）え',household:'家（いえ）ごとの 備（そな）え'},
+      st:{covered:'そろっています',covered_expiring:'そろっています・買（か）い直（なお）し',partial:'あと 少（すこ）し',missing:'用意（ようい）して ください',unknown:'まだ 見（み）ていない'}},
+    match:{ok:(n)=>`「${n}」に 合（あ）わせました ✓`,ask:'自信（じしん）が 低（ひく）い — どれですか？',none:'自動（じどう）マッチ 無（な）し — 選（えら）んで ください：',other:'その 他（ほか）（手動（しゅどう)）',conf:(p)=>`信頼（しんらい）${p}%`},
+    prof:{title:'マイデータ',family:'家族（かぞく）',adults:'大人（おとな）',children:'子（こ）ども',infants:'赤（あか）ちゃん',pets:'ペット',days:'何日分（なんにちぶん）',targetNote:'家族（かぞく）の 人数（にんずう）を 入（い）れると、水（みず）・食（た）べもの・トイレなどの 備（そな）えの 目安（めやす）を 計算（けいさん）します。',babyNote:'👶 ミルク・おむつ・離乳食（りにゅうしょく）などです。赤（あか）ちゃんに よって、いる 量（りょう）は ちがいます。この アプリは「ある か どうか」だけを 見（み）ます。量（りょう）は 家（いえ）で 決（き）めて ください。',listTitle:'あなたの 家（いえ）の 目安（めやす）',storage:'しまう 場所（ばしょ）',storageNote:'物（もの）を 追加（ついか）するとき「しまう 場所（ばしょ）」ボタンに なります。',addStorage:'+ 場所（ばしょ）追加（ついか）',address:'家（いえ）の 住所（じゅうしょ）',addressPh:'例（れい）：麻布図書館',addressNote:'プロトタイプの 注意（ちゅうい）：現在（げんざい）は 登録済（とうろくず）みの サンプル 場所（ばしょ）だけを 使（つか）います。住所検索（じゅうしょけんさく）・GPS・地図（ちず）API は 使（つか）いません。',saved:'保存（ほぞん）しました',location:'よく使（つか）う 場所（ばしょ）',locDesc:'家（いえ）・学校（がっこう）・仕事場（しごとば）など、気（き）になる 場所（ばしょ）を 選（えら）びます。近（ちか）くの 支援点（しえんてん）と 海抜（かいばつ）を 確認（かくにん）できます。',setDemo:'場所（ばしょ）を 設定（せってい）',current:'選（えら）んだ 場所（ばしょ）',demoSet:'場所（ばしょ）を 設定（せってい）しました',demoNotFound:'下（した）の 場所（ばしょ）から 選（えら）んで ください。',useLoc:'📍 今（いま）の 場所（ばしょ）',nearestIs:'一番（いちばん）近（ちか）い 避難所（ひなんじょ）',noLoc:'下（した）から 場所（ばしょ）を 選（えら）ぶか、入力（にゅうりょく）して ください。',geoNo:'場所（ばしょ）が 使（つか）えません',geoWait:'探（さが）して います…',geoOk:'場所（ばしょ）を 保存（ほぞん）',geoFail:'場所（ばしょ）が わかりません',addPlacePrompt:'新（あたら）しい しまう 場所（ばしょ）：',packTitle:'保存（ほぞん）して ある 地域（ちいき）データ',packDesc:'Digital Omamori は、避難所（ひなんじょ）・給水所（きゅうすいじょ）・AED・海抜（かいばつ）・備（そな）えの 目安（めやす）など、地域（ちいき）の 防災（ぼうさい）データを この スマートフォンで 使（つか）えます。パソコンでも 使（つか）えます。アプリを 開（ひら）いた 後（あと）は、緊急（きんきゅう）モードで 保存済（ほぞんず）みの データを 使（つか）えます。',packAuto:'ネットが ある とき 自動更新（じどうこうしん）',packConsent:'今後（こんご）の バージョンで、更新（こうしん）してよい データを 選（えら）べます。',packAll:'すべて 開（ひら）く',packBtn:'更新（こうしん）を 確認（かくにん）',packChecking:'確認（かくにん）して います…',packUpToDate:'最新（さいしん）です',packCheckedNow:'最後（さいご）の 確認（かくにん）：たった今（いま）',packLast:'データの 日付（ひづけ）',packSource:'出典（しゅってん）',srcTitle:'出典（しゅってん）',srcIntro:'地域（ちいき）の 防災（ぼうさい）データと 備（そな）えの 目安（めやす）は、公開（こうかい）されて いる 情報（じょうほう）を もとに して います。',portalTitle:'今（いま）の 状況（じょうきょう）（ネットが ある とき）',portalDesc:'保存（ほぞん）して ある データは、公式（こうしき）の 場所（ばしょ）を 見（み）せます。施設（しせつ）が 今（いま）開（あ）いて いるかは、港区（みなとく）の 公式（こうしき）防災（ぼうさい）ポータルで わかります。ネットが ある とき 見（み）て ください。',portalLink:'港区（みなとく）防災（ぼうさい）ポータルを 開（ひら）く ↗'},
+    fBuyStore:'買（か）った お店（みせ）',fStoredBtns:'しまう 場所（ばしょ）',photoFront:'写真（しゃしん）',photoLabel:'ラベル / 賞味期限（しょうみきげん）',photoHint:'JPG / PNG のみ',photoType:'JPG / PNG のみ — iPhone の HEIC は 不可（ふか）（スクショ か 変換（へんかん）して ください）。',
+    search:'検索（けんさく）…',add:'+ 追加（ついか）の 物品（ぶっぴん）',
+    ready:'いま 使（つか）える',total:'持（も）って いる もの',expiring:'期限（きげん）近（ちか）い',low:'あと 少（すこ）し',missing:'買（か）い足（た）す もの',
+    save:'保存（ほぞん）',cancel:'やめる',del:'削除（さくじょ）',edit:'編集（へんしゅう）',
+    fName:'名前（なまえ）(EN)',fNameJa:'名前（なまえ）(JA)',fCat:'種類（しゅるい）',fQty:'数（かず）',fTarget:'あなたの 家（いえ）の 目安（めやす）',fExp:'期限（きげん）(賞味期限（しょうみきげん)）',fStore:'場所（ばしょ）',srcNote:'あなたの 家（いえ）の 目安（めやす）です。家族（かぞく）の 人数（にんずう）に 合（あ）わせて 計算（けいさん）します。国（くに）や 東京都（とうきょうと）の ガイドと、みんなが よく する 備（そな）えを もとに して います。',
+    addTitle:'防災品（ぼうさいひん）を 追加（ついか）',editTitle:'編集（へんしゅう）',
+    qtyL:(q,t)=>t?`数（かず）${q} / ${t}`:`数（かず）${q}`,store:'場所（ばしょ）：',expIn:(d)=>`あと ${d}日（にち）`,expired:'期限切（きげんぎ）れ',
+    packAge:(d)=>`${d}の データです。オフラインでも 使（つか）えます。`,
+    expiredHint:'新（あたら）しい ものに 替（か）えて ください。',asNeeded:'必要（ひつよう）な 分（ぶん）',asNeededT:'目安（めやす）：必要（ひつよう）な 分（ぶん）',
+    checkTitle:'きょうの おまもり',checkExpiring:'期限（きげん）近（ちか）い/切（ぎ）れ',checkLow:'少（すく）ない/ない',checkCats:'足（た）りない 種類（しゅるい）',checkPack:'保存（ほぞん）して ある 地域（ちいき）データ',checkToday:'きょうの ラッキー行動（こうどう）',
+    emerLead:'次（つぎ）の 行動（こうどう）',offline:'オフライン · アプリに 保存（ほぞん）して ある データから',why:'なぜ ここを 表示（ひょうじ）して いますか',caution:'動（うご）く前（まえ）に',yourKit:'あなたの セット',emCarry:'防災（ぼうさい）セットから 持（も）って いく もの：',emNoCarry:'ここでは 持（も）ち物（もの）の おすすめは 出（だ）して いません。まず まわりの 安全（あんぜん）を 見（み）て ください。公式（こうしき）の お知（し）らせが ある ときは、その とおりに して ください。',close:'閉（と）じる',allReady:'大切（たいせつ）な 備（そな）えは そろっています 🎉',
+    typeAll:'ぜんぶ',cat:{water:'水（みず）',food:'食（た）べ物（もの）',toilet:'トイレ',cooking:'料理（りょうり）',light:'明（あ）かり',power:'電気（でんき）',info:'情報（じょうほう）',medical:'薬（くすり）',cash:'お金（かね）',hygiene:'衛生用品（えいせいようひん）',child:'子（こ）ども用品（ようひん）',pet:'ペット用品（ようひん）',tools:'道具（どうぐ）',other:'その他（た）'},
+    defsTitle:'ことばの 意味（いみ）',stDef:{ready:'目安（めやす）の 数（かず）まで そろって いる。',low:'あるが 目安（めやす）より 少（すく）ない。',expiring_soon:'30日（にち）以内（いない）に 期限（きげん）。使（つか）って 買（か）い直（なお）す。',expired:'期限（きげん）が 過（す）ぎた。',missing:'まだ ない（0）。',not_checked:'中身（なかみ）や 期限（きげん）を まだ 見（み）て いない。'},
+    st:{ready:'足（た）りている',low:'少（すく）ない',expiring_soon:'もうすぐ 切（き）れる',expired:'切（き）れた',missing:'ない',not_checked:'まだ 見（み）ていない'}},
+};
+// EN unit mapping (single source; shared by renderRecommend + updateQtyUnit to prevent drift between the two)
+const EN_UNIT={'L':'L','食':'meals','袋':'packs','個':'pcs','台':'units','回':'uses','セット':'sets','式':'set'};
+const FAC_TYPE={shelter:{en:'Shelter',ja:'避難所（ひなんじょ）'},aed:{en:'AED',ja:'AED'},convenience_support:{en:'Support stop',ja:'支援点（しえんてん）'},temporary_stay:{en:'Temporary stay',ja:'一時滞在（いちじたいざい）'},water_point:{en:'Water',ja:'給水所（きゅうすいじょ）'},return_support:{en:'Return support',ja:'帰宅支援（きたくしえん）'},evacuation_area:{en:'Evac area',ja:'避難場所（ひなんばしょ）'}};
+// Types with no offline points -> guidance card (online -> ポータル / offline -> guidance + look for signs). Source: 港区防災ポータル + glossary v2 (grounded).
+const NP_GUIDE={
+  temporary_stay:{
+    en:{what:'If you cannot get home, do not move around. Go to a Temporary Stay Facility and rest there (up to about 3 days). It is different from an evacuation shelter.',mark:'Look for a “一時滞在施設 / Temporary Stay Facility” sign at the entrance of large buildings, hotels or halls.',note:'Not all facilities are published in advance; some open only during a disaster. Check live opening status on the Minato disaster portal when you are online.'},
+    ja:{what:'家（いえ）に 帰（かえ）れない ときは、あちこち 動（うご）かないで ください。一時滞在施設（いちじたいざいしせつ）で 休（やす）みます（3日（みっか）くらいまで）。避難所（ひなんじょ）とは ちがいます。',mark:'大（おお）きい ビルや ホテルの 入口（いりぐち）で「一時滞在施設（いちじたいざいしせつ）」の マークを さがして ください。',note:'どの 施設（しせつ）が 開（あ）くかは、前（まえ）から ぜんぶは わかりません。災害（さいがい）の とき 開（あ）く ところも あります。今（いま）開（あ）いて いるかは、ネットが ある とき 港区（みなとく）防災（ぼうさい）ポータルで 確（たし）かめて ください。'}
+  },
+  return_support:{
+    en:{what:'When you walk home, use Disaster Return-Support Stations on the way. They give water, toilets and road information. They are not a place to sleep.',mark:'Look for the yellow “災害時帰宅支援ステーション” sticker on the door of convenience stores and gas stations.',note:'These are partner shops shown by a sticker (they can change), so there is no fixed map. Check the Minato disaster portal when online. (Convenience-store support points are included here.)'},
+    ja:{what:'歩（ある）いて 帰（かえ）る ときは、途中（とちゅう）の 災害時帰宅支援（さいがいじきたくしえん）ステーションを 使（つか）います。水（みず）・トイレ・道（みち）の 情報（じょうほう）が もらえます。泊（と）まる ところ では ありません。',mark:'コンビニや ガソリンスタンドの ドアで、黄色（きいろ）い「災害時帰宅支援（さいがいじきたくしえん）ステーション」の ステッカーを さがして ください。',note:'お店（みせ）は ステッカーで わかります（変（か）わる ことが あります）。決（き）まった 地図（ちず）は ありません。ネットが ある とき 港区（みなとく）防災（ぼうさい）ポータルで 確（たし）かめて ください。（コンビニの 支援点（しえんてん）も ここに 入（はい）ります。）'}
+  }
+};
+
+const state={lang:'en',tab:'check',aiUnavailDemo:false,/* Landing = まとめ / daily digest (kuji-launch is the first element on that page = the draw is visible on app open) */online:(typeof navigator!=='undefined'&&'onLine'in navigator)?navigator.onLine:true,
+  kitFilter:{query:'',category:'all',status:'all'},packFilter:{query:'',type:'all'},profOpen:{},
+  data:{supplyDoc:null,facDoc:null,hvDoc:null,userDoc:null,cardDoc:null,catalogDoc:null},editing:null,currentMatch:null};
+const t=()=>UI[state.lang];
+const esc=(s)=>String(s==null?'':s).replace(/[&<>"'`]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;'}[c]));
+/* jsq: for inline JS string arguments like onclick="Fn('${esc(jsq(v))}')". esc only guards the HTML layer;
+ * a &#39; inside an HTML attribute is decoded back to ' before JS parses it -> esc alone cannot prevent JS-string escape (e.g. John's closet would break the button).
+ * jsq first (escapes \ and ') then esc (HTML entities) = both layers safe. Fixed 2026-07-02 (review P1#2). */
+const jsq=(s)=>String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+// Storage-location display-layer bilingual mapping (EN mode does not expose the Japanese location, JA mode does not expose the English location).
+// Deterministic mapping only for the 6 known seed values; a user's custom location is their own label, shown as-is with no guessed translation. The saved value is always the original string.
+const LOC_I18N={
+  '玄関（げんかん）クローゼット':{en:'Entryway closet'},
+  '寝室（しんしつ）押入（おしい）れ':{en:'Bedroom closet'},
+  'Bedroom WIC':{ja:'寝室（しんしつ）クローゼット'},
+  'Shoes Cabinet Next to Entrance':{en:'Shoes cabinet next to entrance',ja:'玄関（げんかん）の くつ箱（ばこ）'},
+  'Studio':{ja:'スタジオ'},
+  'Under Dining Table':{en:'Under dining table',ja:'ダイニングテーブルの 下（した）'},
+};
+const locDisp=(v)=>{const m=LOC_I18N[v];return (m&&m[state.lang])||v;};
+// Facility-name ruby = official readings only (the ふりがな column in hinansho.csv, verified and backfilled).
+// Where there is no official reading (AED entries not yet backfilled) we do not guess = trust design (PITCH_material_trust_boundary §5). Returns HTML; the caller must not esc it again.
+const isGenEn=(f)=>!!(f&&!(f.name_en||'').trim()&&f.name_en_generated);
+const genNote=(any)=>any?`<div class="gen-note">${state.lang==='ja'?'＊＝この アプリの 翻訳（ほんやく）です。正式（せいしき）な 英語名（えいごめい）では ありません。':'＊ = translated by this app, not an official name.'}</div>`:'';
+const facEn=(f)=>f?(((f.name_en||'').trim())?f.name_en:(f.name_en_generated?f.name_en_generated+'＊':'')):'';  // ＊= app translation (AED English-name ingest; the official field stays uncontaminated)
+const facNm=(f)=>state.lang==='ja'&&f.name_yomi?`<ruby>${esc(f.name)}<rt>${esc(f.name_yomi)}</rt></ruby>`:esc(f.name);
+const lc=(o)=>state.lang==='ja'?o.ja:o.en;
+/* やさしい日本語: after render, convert 漢字（かな） -> <ruby>漢字<rt>かな</rt></ruby> (kana above the kanji).
+ * Touches text nodes only, never input value/attributes; processes node by node to avoid regex lastIndex issues. */
+function applyRuby(root){
+  // Ruby is applied in both EN and やさしい modes: the Japanese on screen is for the user themselves plus any helping Japanese bystander, and both need furigana.
+  if(!root)return;
+  const pat=/([一-鿿々〆ヶ][一-鿿々〆ヶぁ-ゖ]*)（([぀-ヿー]+)）/;
+  const w=document.createTreeWalker(root,4,null);  // 4 = NodeFilter.SHOW_TEXT (avoids relying on a global NodeFilter, so jsdom/vm also work)
+  const targets=[];let n;
+  while((n=w.nextNode())){ if(n.nodeValue&&n.parentNode&&n.parentNode.nodeName!=='RUBY'&&pat.test(n.nodeValue)) targets.push(n); }
+  targets.forEach(t=>{ const s=document.createElement('span');
+    s.innerHTML=t.nodeValue.replace(/([一-鿿々〆ヶ][一-鿿々〆ヶぁ-ゖ]*)（([぀-ヿー]+)）/g,'<ruby>$1<rt>$2</rt></ruby>');
+    t.parentNode.replaceChild(s,t); });
+}
+function toast(m){const e=document.getElementById('toast');e.textContent=m;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),1900);}
+
+// ---- data access ----
+const supplies=()=>state.data.supplyDoc?.supply_item||[];
+const facilities=()=>state.data.facDoc?.facility||[];
+const fmtPackDate=(s)=>{const m=String(s).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);return m?`${m[1]}/${Number(m[2])}/${Number(m[3])}`:String(s);};
+const hvs=()=>state.data.hvDoc?.human_verification||[];
+const family=()=>state.data.supplyDoc?.family||{familyAdults:0,familyChildren:0,targetDays:3};
+const catalog=()=>state.data.catalogDoc?.catalog||[];
+const userLoc=()=>{const c=state.data.userDoc?.user_profile?.coords;return (c&&typeof c.lat==='number'&&typeof c.lng==='number')?c:C.DEMO_USER_LOCATION;};
+const demoLocs=()=>Array.isArray(state.data.demoDoc)?state.data.demoDoc:[];
+const packObj=()=>({facility:facilities(),human_verification:hvs(),decision_card_template:state.data.cardDoc?.decision_card_template||[]});
+
+async function api(path,method='GET',body){
+  const opt={method,headers:{'Content-Type':'application/json'}};
+  if(body)opt.body=JSON.stringify(body);
+  const r=await fetch(path,opt);
+  return r.json();
+}
+/* Privacy by design: private household data stays on-device (localStorage). Cloud Run only serves the static shell + public pack + read-only seed/demo defaults + Gemini Lens proxy. Private data is never POSTed back to the server. */
+const LS={supply:'omamori_supply_v1',user:'omamori_user_v1'};
+const lsGet=(k)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}};
+const lsSet=(k,o)=>{try{localStorage.setItem(k,JSON.stringify(o));}catch(e){}};
+async function loadAll(){
+  const [f,h,c,cat,dl,kj,me]=await Promise.all([api('/api/facilities'),api('/api/human-verification'),api('/api/decision-cards'),api('/api/catalog').catch(()=>({catalog:[]})),api('/api/demo-locations').catch(()=>[]),api('/api/kuji').catch(()=>({kuji:[]})),api('/api/meta').catch(()=>({}))]);
+  // Private data: localStorage is the source of truth; if empty on first run -> read seed/demo defaults from the server and copy into localStorage (afterwards read/write local only, never POST back to the server)
+  let s=lsGet(LS.supply);if(!s){s=await api('/api/supply').catch(()=>({supply_item:[],family:null}));lsSet(LS.supply,s);}
+  let u=lsGet(LS.user);if(!u){u=await api('/api/user-profile').catch(()=>({user_profile:{}}));lsSet(LS.user,u);}
+  state.data={supplyDoc:s,facDoc:f,hvDoc:h,userDoc:u,cardDoc:c,catalogDoc:cat,demoDoc:Array.isArray(dl)?dl:[],kujiDoc:kj};
+  state.aiEnabled=!!(me&&me.ai_enabled);
+}
+const kujiPool=()=>state.data.kujiDoc?.kuji||[];
+async function saveSupply(){lsSet(LS.supply,state.data.supplyDoc);}  // Stored on-device in localStorage; never POSTed back to the server (privacy)
+
+// ---- status styling ----
+const stPill=(st)=>st==='missing'||st==='expired'?'p-alert':st==='expiring_soon'?'p-gold':st==='low'||st==='not_checked'?'p-info':'p-calm';
+const stStrip=(st)=>st==='missing'||st==='expired'?'s-alert':st==='expiring_soon'?'s-gold':st==='low'||st==='not_checked'?'s-info':'s-calm';
+
+// ---- KIT ----
+function renderKit(){
+  const L=t();const summary=C.computeKitSummary(supplies(),NOW);const fam=family();
+  const items=C.filterSupplyItems(supplies(),state.kitFilter,NOW);
+  const cats=['all','water','food','toilet','cooking','light','power','info','medical','cash','hygiene','child','pet','tools'];
+  const sts=['all','ready','low','expiring_soon','expired','missing','not_checked'];
+  const expiring=summary.items.filter(i=>i.status==='expiring_soon'||i.status==='expired').length;
+  // FAMILY chip (text-based): 大人/子ども always shown, 乳児/ペット shown only when >0; label = X日分の備え.
+  // The old "2+2👶·8d" 👶 counted 子ども (not infants) = misleading, and 乳児/ペット were hidden -> removed.
+  const jaK=state.lang==='ja';
+  const famTxt=(jaK
+    ?[['大人（おとな）',fam.familyAdults||0,1],['子（こ）ども',fam.familyChildren||0,1],['赤（あか）ちゃん',fam.familyInfants||0,0],['ペット',fam.familyPets||0,0]]
+    :[['Adults ',fam.familyAdults||0,1],['Kids ',fam.familyChildren||0,1],['Baby ',fam.familyInfants||0,0],['Pets ',fam.familyPets||0,0]])
+    .filter(([,n,always])=>always||n>0).map(([l,n])=>l+n).join(jaK?'・':' · ');
+  const famDays=jaK?`${fam.targetDays}日分（にちぶん）の 備（そな）え`:`For ${fam.targetDays} days`;
+  let h=`<div class="sec-h page-h">${esc(L.tabs.kit)}</div><div class="src-note">${esc(L.kitDesc)}</div>
+  <!-- Kit header = inventory health, not a readiness %. The old "usable %" could be read as "how prepared am I" (that is Ready Check's job) and imply false safety, so it is replaced by plain counts: total items, expiring, running low. -->
+  <div class="stats">
+    <div class="stat"><div class="v">${summary.total}</div><div class="l">${L.total}</div></div>
+    <div class="stat ${expiring?'warn':''}"><div class="v">${expiring}</div><div class="l">${L.expiring}</div></div>
+    <div class="stat"><div class="v">${summary.byStatus.low||0}</div><div class="l">${L.low}</div></div>
+    <div class="stat"><div class="v" style="font-size:12.5px;line-height:2">${esc(famTxt)}</div><div class="l">${esc(famDays)}</div></div>
+  </div>
+  <div class="toolbar">
+    <input class="search" placeholder="${L.search}" value="${esc(state.kitFilter.query)}" oninput="App.kitQuery(this.value)">
+  </div>
+  <!-- My Emergency Kit = the stock view/edit/search entry; the add button is removed. Adding always goes through Ready Check (fill gaps + Extra kit items). -->
+  <div class="pills">${cats.map(c=>`<button class="pill-btn ${state.kitFilter.category===c?'on':''}" onclick="App.kitCat('${c}')">${c==='all'?L.typeAll:esc(L.cat[c])}</button>`).join('')}</div>
+  <div class="pills">${sts.map(s=>`<button class="pill-btn ${state.kitFilter.status===s?'on':''}" onclick="App.kitStatus('${s}')">${s==='all'?L.typeAll:esc(L.st[s])}</button>`).join('')}</div>`;
+  h+=`<details class="legend"><summary>${esc(L.defsTitle)}</summary><div class="legend-body">`+['ready','low','expiring_soon','expired','missing','not_checked'].map(s=>`<div class="legend-row"><span class="pill ${stPill(s)}">${esc(L.st[s])}</span><span>${esc(L.stDef[s])}</span></div>`).join('')+`</div></details>`;
+  if(!items.length){h+=`<div class="empty"><div class="empty-ic" aria-hidden="true">✦</div>${esc(L.emptyNote)}</div>`;return h;}
+  h+=`<div class="grid">`+items.map(it=>{
+    const nm=state.lang==='ja'?(it.name_ja||it.name_en||''):(it.name_en||it.name_ja||'');let exp='';
+    if(it.expiryDate){const d=C.daysSince(it.expiryDate,NOW)*-1;const cls=d<0?'exp-bad':d<=30?'exp-soon':'exp-ok';exp=`<div class="c-exp ${cls}">⏳ ${esc(it.expiryDate)} · ${d<0?L.expired:L.expIn(d)}</div>`;}
+    const gap=it.status!=='ready'?(state.lang==='ja'?it.gap_reason_ja:it.gap_reason_en):'';
+    const tag=it.category==='pet'?['kt-pet',state.lang==='ja'?'ペット':'Pet']
+      :it.category==='child'?(String(it.matched_rule_id||'').startsWith('infant_')?['kt-baby',state.lang==='ja'?'赤（あか）ちゃん':'Baby']:['kt-baby',state.lang==='ja'?'子（こ）ども':'Kids']):null;
+    return `<div class="card"><div class="strip ${stStrip(it.status)}"></div>
+      ${it.photo?`<img class="c-thumb" src="${esc(it.photo)}" alt="">`:''}
+      <div class="c-top"><div class="c-name">${esc(nm)}</div><span class="pill ${stPill(it.status)}">${esc(L.st[it.status])}</span></div>
+      ${tag?`<div class="kit-tag-row"><span class="kit-tag ${tag[0]}">${esc(tag[1])}</span></div>`:''}
+      <div class="c-line">${esc(L.qtyL(it.quantity,it.targetQuantity))} · ${L.store} ${esc(it.storageLocation?locDisp(it.storageLocation):'—')}</div>
+      ${it.store?`<div class="c-line">🏪 ${esc(it.store)}</div>`:''}
+      ${exp}${gap?`<div class="c-gap">${esc(gap)}</div>`:''}
+      <div class="c-actions"><button class="icon-btn" onclick="App.openEdit('${it.item_id}')">✎ ${L.edit}</button></div></div>`;
+  }).join('')+`</div>`;
+  return h;
+}
+
+// ---- LOCAL PACK ----
+// ---- 周辺ビュー / Nearby View (Local Pack A) ----
+function renderPack(){
+  const L=t();const all=facilities();const me=userLoc();
+  const types=['all','shelter','aed','water_point','temporary_stay','return_support'];  // Lists all statically. coord types (shelter/aed/water_point) -> map points; guidance types (temporary_stay/return_support) -> guidance card + ポータル. Convenience stores are folded into 帰宅支援.
+  const list=C.filterFacilities(all,state.packFilter);
+  const near=C.nearestFacilities(me,list);
+  // Pills carry the current data count (coord types; guidance types have no points, so no count) + a one-line plain gloss of the selected type (for people who do not know disaster vocabulary)
+  const COORD_TYPES=['shelter','aed','water_point'];
+  const cntOf=(ty)=>ty==='all'?all.filter(f=>COORD_TYPES.includes(f.type)).length:(COORD_TYPES.includes(ty)?all.filter(f=>f.type===ty).length:null);
+  const TYPE_GLOSS={shelter:{ja:'にげて 休（やす）める ところ',en:'A place to evacuate and rest'},aed:{ja:'AED（心臓（しんぞう）を 助（たす）ける 機械（きかい））が ある ところ',en:'Where an AED (heart-restart device) is available'},water_point:{ja:'水（みず）を もらえる ところ',en:'Where you can get water in a disaster'}};
+  const nearestOf=(ty)=>C.nearestFacilities(me,all.filter(f=>f.type===ty))[0]||null;
+  const dispLoc=state.data.userDoc?.user_profile?.demo_location_name||(state.lang==='ja'?'六本木（ろっぽんぎ）・麻布（あざぶ）':'Roppongi-Azabu');
+  const typLabel=(ty)=>(FAC_TYPE[ty]||{en:ty,ja:ty})[state.lang];
+  // Official facility type -> EN (sentence case, acronyms uppercase; deterministic mapping of 6 fixed values, not AI translation)
+  // Format: Category chip · Facility type · English name (always last); in JA mode the type uses the official original wording
+  const OFFICIAL_TYPE_EN={
+    'AED設置場所':'AED location',
+    '区民避難所（地域防災拠点）':'Residents’ shelter (community disaster hub)',
+    '福祉避難所':'Welfare shelter',
+    '小規模応急給水槽（100立方メートル槽）':'Small emergency water tank (100 m³)',
+    '浄水場・給水所':'Water supply station',
+    '震災対策用応急給水槽（1500立方メートル槽）':'Emergency water tank (1,500 m³)',
+  };
+  const typJpEn=(f)=>state.lang==='ja'?(f.official_type_jp||''):(OFFICIAL_TYPE_EN[f.official_type_jp]||f.official_type_jp||'');
+  // ① summary
+  let h=`<div class="np-head"><div class="np-title">${esc(L.np.title)}</div>
+    <div class="np-sub">📍 ${esc(L.np.demoLoc)}${state.lang==='ja'?'（':' ('}<span class="np-off">${esc(L.np.offline)}</span>${state.lang==='ja'?'）':')'}：<span class="np-sub2">${esc(dispLoc)}　·　${esc(L.np.dataSrc)}</span></div></div>`;
+  // ② priority cards（最寄り 避難所 / AED）
+  const ps=nearestOf('shelter'),pa=nearestOf('aed');
+  h+=`<div class="np-prio">`+[['shelter',ps,'一番（いちばん）近（ちか）い 避難所（ひなんじょ）','Nearest shelter'],['aed',pa,'一番（いちばん）近（ちか）い AED','Nearest AED']].map(([ty,p,jaL,enL])=>p?`
+    <div class="np-pcard ${ty}"><div class="np-pl">${esc(state.lang==='ja'?jaL:enL)}</div>
+      <div class="np-pnm">${facNm(p.facility)}</div>
+      ${(facEn(p.facility)||OFFICIAL_TYPE_EN[p.facility.official_type_jp])?`<div class="np-pen">${esc(facEn(p.facility)||OFFICIAL_TYPE_EN[p.facility.official_type_jp])}</div>`:''}
+      <div class="np-pd">${esc(C.formatDistance(p.distance_m,state.lang))} · ${esc(C.compass8(C.bearingDeg(me,p.facility),state.lang))}</div></div>`:'').join('')+`</div>`;
+  // ②' 海抜 (elevation) comparison card (presents hard data; does not judge Safe/Danger, does not navigate) — GSI elevation, T.P.
+  if(ps&&typeof ps.facility.elevation_m==='number'){
+    const highSh=all.filter(f=>f.type==='shelter'&&typeof f.elevation_m==='number'&&f.elevation_m<=50).sort((a,b)=>b.elevation_m-a.elevation_m)[0];
+    const dlNear=demoLocs().filter(d=>typeof d.elevation_m==='number').map(d=>({d,dist:Math.hypot((d.lat||0)-me.lat,(d.lng||0)-me.lng)})).sort((a,b)=>a.dist-b.dist)[0];
+    const dlM=(dlNear&&dlNear.dist<0.003)?dlNear.d:null;  // Nearest demo point (within ~300m); uses that point's real name, honestly not pretending to be precise GPS
+    const yourElev=dlM?dlM.elevation_m:null;
+    const yourName=state.data.userDoc?.user_profile?.demo_location_name||(dlM&&dlM.display_name)||L.np.elevYou;
+    const jaL=state.lang==='ja';const rowsE=[['📍',jaL?'今（いま）いる 場所（ばしょ）':'Your place',yourName,yourElev],['🏢',jaL?'一番（いちばん）近（ちか）い 避難所（ひなんじょ）':'Nearest shelter',ps.facility.name,ps.facility.elevation_m],highSh&&highSh.facility_id!==ps.facility.facility_id?['🗻',jaL?'近（ちか）くで 一番（いちばん）高（たか）い 避難所（ひなんじょ）':'Highest shelter nearby',highSh.name,highSh.elevation_m]:null].filter(Boolean);
+    const maxE=Math.max(...rowsE.map(r=>r[3]||0),1);
+    h+=`<div class="elev-card"><div class="elev-h">⛰️ ${esc(L.np.elevTitle)}</div>`+rowsE.map(([ic,role,nm,v])=>`<div class="elev-row"><span class="elev-ic">${ic}</span><span class="elev-nm"><span class="elev-role">${esc(role)}</span><span class="elev-fnm">${esc(nm)}</span></span><span class="elev-bar"><i style="width:${v!=null?Math.round(v/maxE*100):0}%"></i></span><span class="elev-v">${v!=null?v+'m':'—'}</span></div>`).join('')+`<div class="elev-note">${esc(L.np.elevNote)}</div></div>`;
+  }
+  // ③ filter (lists all statically)
+  h+=`<div class="pills">${types.map(ty=>{const c=cntOf(ty);return `<button class="pill-btn ${state.packFilter.type===ty?'on':''}" onclick="App.packType('${ty}')">${ty==='all'?L.typeAll:esc(typLabel(ty))}${c!=null?` <span class="pill-cnt">${c}</span>`:''}</button>`;}).join('')}</div>`;
+  const _g=TYPE_GLOSS[state.packFilter.type];
+  if(_g)h+=`<div class="np-gloss">${esc(state.lang==='ja'?_g.ja:_g.en)}</div>`;
+  // ④ guidance types (no offline points) -> guidance card + look-for-signs + online -> ポータル (not static points; no-harm: do not list incomplete or possibly-closed points)
+  const g=NP_GUIDE[state.packFilter.type];
+  if(g){const gx=g[state.lang];
+    h+=`<div class="np-guide">
+      <div class="npg-what">${esc(gx.what)}</div>
+      <div class="npg-mark">🔎 <b>${esc(L.np.markLabel)}：</b>${esc(gx.mark)}</div>
+      <div class="npg-note">${esc(gx.note)}</div>
+      <a class="btn btn-primary" href="https://city-minato.my.site.com" target="_blank" rel="noopener noreferrer" style="display:block;text-align:center;text-decoration:none;margin-top:10px">${esc(L.np.portalBtn)}</a>
+    </div>`;
+    return h;}
+  // ⑤ coord types (shelter/aed/water_point) -> point-location rows (not saved cards)
+  if(!near.length){h+=`<div class="empty">${esc(L.np.coming)}</div>`;return h;}
+  const icoOf=(ty)=>ty==='shelter'?'🏢':ty==='water_point'?'💧':'<span class="aed-badge">AED</span>';
+  const clsOf=(ty)=>ty==='shelter'?'sh':ty==='water_point'?'wp':'aed';
+  h+=genNote(near.some(x=>isGenEn(x.facility)));  // ＊inline explanation (the page where the ＊ marker appears must carry its explanation; moved to the top of the list, since a 311-row list tail would effectively hide it)
+  h+=`<div class="np-list">`+near.map(({facility:f,distance_m})=>{const cls=clsOf(f.type);const dir=C.compass8(C.bearingDeg(me,f),state.lang);
+    return `<div class="np-row">
+      <div class="np-ico ${cls}">${icoOf(f.type)}</div>
+      <div class="np-mid"><div class="np-nm">${facNm(f)}</div>
+        <div class="np-meta"><span class="np-typ ${cls}">${esc(typLabel(f.type))}</span>${typJpEn(f)?' · '+esc(typJpEn(f)):''}${facEn(f)?' · '+esc(facEn(f)):''}</div></div>
+      <div class="np-right"><div class="np-dist">${esc(C.formatDistance(distance_m,state.lang))}</div><div class="np-dir">${esc(dir)}${state.lang==='ja'?'むき':''}</div></div>
+    </div>`;}).join('')+`</div>`;
+  return h;
+}
+
+// ---- CHECK ----
+function renderCheck(){
+  const L=t();const summary=C.computeKitSummary(supplies(),NOW);
+  const cov=C.computeCoverage(supplies(),catalog(),family(),NOW);
+  const expSoon=summary.items.filter(i=>i.status==='expiring_soon'),expired=summary.items.filter(i=>i.status==='expired');
+  const lowItems=summary.items.filter(i=>i.status==='low'),missItems=summary.items.filter(i=>i.status==='missing');
+  const missCats=C.kitMissingCategories(supplies(),NOW);
+  const pi=C.localPackInfo(packObj(),NOW);
+  const grab=summary.grab[0];
+  // Lucky-action line (a good-deed-a-day style): the verb is deterministic by status; the cause-effect is truthful ("備えが上がります", since the fortune is computed from 備え anyway)
+  const luckyLine=(it)=>{
+    const ja=state.lang==='ja';const n=nm(it);
+    const V={expiring_soon:['買（か）い直（なお）して ください','Replace'],expired:['買（か）い直（なお）して ください','Replace'],missing:['買（か）って ください','Buy'],low:['買（か）い足（た）して ください','Top up on']};
+    const v=V[it.status]||V.low;
+    return ja?`${n}を ${v[0]}。そろい具合（ぐあい）が 上（あ）がります。`:`${v[1]} ${n}. Your covered % goes up.`;
+  };
+  const nm=(it)=>state.lang==='ja'?(it.name_ja||it.name_en||''):(it.name_en||it.name_ja||'');
+  // One card, two subheadings (sectioned subtitles = everything visible at a glance); subheadings use the finalized status vocabulary, and an empty section showing — is also information
+  const sec2=(pairs)=>{
+    if(!pairs.some(([,a])=>a.length))return `<div class="c-line">${L.allReady}</div>`;
+    return pairs.map(([lb,a,hint])=>`<div class="dg-sub">${esc(lb)}</div>`+(a.length?a.map(i=>`<div class="c-line">• ${esc(nm(i))}</div>`).join('')+(hint?`<div class="dg-hint">${esc(hint)}</div>`:''):`<div class="c-line dg-none">—</div>`)).join('');
+  };
+  const pc=cov.percent;const ringCls=pc>=80?'high':pc>=50?'mid':'low';
+  // Page title: きょうの おまもり + date. The date avoids the X日 reading (ついたち/よっか are irregular; a wrong reading is worse than none) -> numeric 7/4 + weekday ruby = smartphone-UI convention
+  const jaC=state.lang==='ja';
+  const wd=NOW.getDay();
+  const dateStr=jaC
+    ?`${NOW.getMonth()+1}/${NOW.getDate()}（${['日（にち）','月（げつ）','火（か）','水（すい）','木（もく）','金（きん）','土（ど）'][wd]}）`
+    :`${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][wd]}, ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][NOW.getMonth()]} ${NOW.getDate()}`;
+  return `<div class="check-title"><span class="ct-t">${esc(L.checkTitle)}</span><span class="ct-date">${esc(dateStr)}</span></div>
+  <div class="hero-row">
+  <button class="kuji-hero" onclick="App.openKuji()">
+    <div class="kuji-omi"><span class="box"></span><span class="stick"></span><span class="lid"></span><span class="band">御</span></div>
+    <div class="kuji-hero-t">${esc(L.kuji.launch)}</div>
+  </button>
+  <button class="kuji-hero" onclick="App.go('lens')">
+    <div class="lens-cam-art"><span class="cam-body"><span class="cam-lens"></span></span></div>
+    <div class="kuji-hero-t">${esc(L.kuji.lensGo)}</div>
+  </button>
+  </div>
+    <div class="check-hero">
+      <div class="big-ring ${ringCls}" style="--p:${pc}"><span class="bp">${pc}%</span><span class="bl">${esc(L.rec.pct)}</span></div>
+      <div class="check-sub">${cov.coveredCount} / ${cov.applicableCount} ${esc(L.total)}</div>
+    </div>
+    <div class="ema-board"><div class="ema-rail"></div><div class="grid">
+    <div class="card"><div class="strip s-gold"></div><div class="c-name">${L.checkExpiring}</div>${sec2([[L.st.expiring_soon,expSoon],[L.st.expired,expired,L.expiredHint]])}</div>
+    <div class="card"><div class="strip s-alert"></div><div class="c-name">${L.checkLow}</div>${sec2([[L.st.low,lowItems],[L.st.missing,missItems]])}</div>
+    <div class="card"><div class="strip s-info"></div><div class="c-name">${L.checkCats}</div><div class="badges">${missCats.length?missCats.map(c=>`<span class="pill p-alert">${esc(L.cat[c]||c)}</span>`).join(''):`<span class="c-line">${L.allReady}</span>`}</div></div>
+    <div class="card"><div class="strip s-info"></div><div class="c-name">${L.checkPack}</div><div class="c-line">${pi.oldestUpdate?L.packAge(fmtPackDate(pi.oldestUpdate)):'—'}</div></div>
+    <div class="card dg-lucky"><div class="strip s-gold"></div><div class="c-name">${L.checkToday}</div><div class="c-line">${grab?esc(luckyLine(grab)):L.allReady}</div></div>
+  </div></div>`;
+}
+
+// ---- RECOMMEND / COVERAGE (v0.4 ①) ----
+// Source tier (do not label the whole thing official): 一般 = common practice; others (官邸/農水省/東京) = public guidance; no rule = household-specific.
+const SRC_LEVEL=(src)=>{ if(!src) return 'household'; if(/一般|general/i.test(src)) return 'common'; return 'guidance'; };
+// Category pictogram v2 (same 60x72 size and craft as the hero = gradient + highlight + ground shadow; hygiene switched to a lavender tone so it is visible on the beige background)
+const _A=(b)=>`<svg viewBox="0 0 60 72" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${b}</svg>`;
+const RULE_ART={
+ food_dry:_A('<ellipse cx="30" cy="66.5" rx="17" ry="3.2" fill="#8A7E6E" opacity=".16"/><circle cx="37" cy="30" r="12.5" fill="#D9B36A"/><circle cx="37" cy="30" r="12.5" fill="none" stroke="#C29B54" stroke-width="2.4" stroke-dasharray="3.4 2.6"/><circle cx="33.5" cy="26.5" r="1.3" fill="#B4924E"/><circle cx="40.5" cy="26.5" r="1.3" fill="#B4924E"/><circle cx="33.5" cy="33.5" r="1.3" fill="#B4924E"/><circle cx="40.5" cy="33.5" r="1.3" fill="#B4924E"/><circle cx="37" cy="30" r="1.3" fill="#B4924E"/><circle cx="24" cy="43" r="15" fill="#E8CE96"/><circle cx="24" cy="43" r="15" fill="none" stroke="#C9A85E" stroke-width="2.6" stroke-dasharray="3.8 2.8"/><circle cx="19.5" cy="38.5" r="1.5" fill="#B4924E"/><circle cx="28.5" cy="38.5" r="1.5" fill="#B4924E"/><circle cx="19.5" cy="47.5" r="1.5" fill="#B4924E"/><circle cx="28.5" cy="47.5" r="1.5" fill="#B4924E"/><circle cx="24" cy="43" r="1.5" fill="#B4924E"/><circle cx="43" cy="55" r="1.6" fill="#C9A85E"/><circle cx="47" cy="51" r="1.2" fill="#C9A85E"/>'),
+ water:_A('<ellipse cx="30" cy="66.5" rx="17" ry="3.2" fill="#8A7E6E" opacity=".16"/><defs><linearGradient id="wt1" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#C9DEF3"/><stop offset="1" stop-color="#A3C2E5"/></linearGradient></defs> <rect x="24" y="6" width="12" height="7" rx="2.4" fill="#5C7AA0"/><rect x="24" y="6" width="12" height="2.6" rx="1.3" fill="#7A98BC"/> <rect x="26" y="13" width="8" height="5" fill="#B7CFE9"/> <rect x="18" y="17" width="24" height="46" rx="8" fill="url(#wt1)"/> <path d="M18 33h24M18 52h24" stroke="#8FB1D6" stroke-width="1.2" opacity=".7"/> <rect x="18" y="36" width="24" height="13" fill="#FCFAF7"/> <path d="M21 42q3-3 6 0t6 0 6 0" fill="none" stroke="#7DA0C8" stroke-width="2" stroke-linecap="round"/> <rect x="21" y="20" width="3.6" height="40" rx="1.8" fill="#FFFFFF" opacity=".5"/>'),
+ food_staple:_A('<ellipse cx="30" cy="66.5" rx="17" ry="3.2" fill="#8A7E6E" opacity=".16"/><defs><linearGradient id="rb1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#A79FD0"/><stop offset="1" stop-color="#8A82BC"/></linearGradient></defs> <path d="M22 14q-4 4 0 8M32 10q-4 4 0 8M42 14q-4 4 0 8" fill="none" stroke="#C9CFE3" stroke-width="2.2" stroke-linecap="round"/> <ellipse cx="30" cy="34" rx="16.5" ry="8" fill="#FCFAF7"/> <circle cx="22" cy="32" r="1.7" fill="#E4DACF"/><circle cx="30" cy="29.5" r="1.7" fill="#E4DACF"/><circle cx="37" cy="32.5" r="1.7" fill="#E4DACF"/><circle cx="26" cy="35.5" r="1.7" fill="#E4DACF"/><circle cx="34" cy="36" r="1.7" fill="#E4DACF"/> <path d="M11 36a19 18 0 0 0 38 0z" fill="url(#rb1)"/> <path d="M14 44h32" stroke="#FCFAF7" stroke-width="1.6" opacity=".55"/> <rect x="23" y="57" width="14" height="5.5" rx="2.2" fill="#6E6AB0"/>'),
+ food_canned:_A('<ellipse cx="30" cy="66.5" rx="17" ry="3.2" fill="#8A7E6E" opacity=".16"/><defs><linearGradient id="cn1" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#D9DEEC"/><stop offset="1" stop-color="#B2BAD3"/></linearGradient></defs> <rect x="17" y="19" width="26" height="40" rx="4" fill="url(#cn1)"/> <ellipse cx="30" cy="19.5" rx="13" ry="4.8" fill="#8A93B8"/><ellipse cx="30" cy="18.8" rx="10.5" ry="3.4" fill="#A6AEC8"/> <circle cx="34" cy="18.5" r="2" fill="none" stroke="#707A9E" stroke-width="1.4"/> <rect x="17" y="31" width="26" height="16" fill="#E9DEC2"/> <path d="M22 39c2.5-3 5.5-3 8 0s5.5 3 8 0" fill="none" stroke="#B49A63" stroke-width="2" stroke-linecap="round"/> <circle cx="24" cy="36" r="1.2" fill="#B49A63"/> <rect x="20" y="23" width="3" height="34" rx="1.5" fill="#FFFFFF" opacity=".45"/>'),
+ food_retort:_A('<ellipse cx="30" cy="66.5" rx="17" ry="3.2" fill="#8A7E6E" opacity=".16"/><defs><linearGradient id="rt1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#DE9B74"/><stop offset="1" stop-color="#C67A50"/></linearGradient></defs> <rect x="15" y="15" width="30" height="46" rx="4.5" fill="url(#rt1)"/> <rect x="15" y="15" width="30" height="8" rx="3" fill="#A85E3E"/> <path d="M17 26h26" stroke="#FCFAF7" stroke-width="1" stroke-dasharray="2.4 2.2" opacity=".7"/> <path d="M13.5 20 l4 2.6 -4 2.6z" fill="#F1EDE6"/><path d="M46.5 20 l-4 2.6 4 2.6z" fill="#F1EDE6"/> <circle cx="30" cy="43" r="10.5" fill="#FCFAF7"/> <path d="M23.5 44.5a6.5 5 0 0 0 13 0z" fill="#D9834F"/><ellipse cx="30" cy="44.3" rx="6.5" ry="1.7" fill="#F2B98C"/> <path d="M27 36.5q-1.6 2 0 4M31.5 35.5q-1.6 2 0 4" fill="none" stroke="#D9834F" stroke-width="1.5" stroke-linecap="round"/> <rect x="18" y="27" width="3" height="30" rx="1.5" fill="#FFFFFF" opacity=".35"/>'),
+ food_nutrition:_A('<ellipse cx="30" cy="66.5" rx="17" ry="3.2" fill="#8A7E6E" opacity=".16"/><defs><linearGradient id="nt1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#A69ED4"/><stop offset="1" stop-color="#8880BA"/></linearGradient></defs> <path d="M12 33l-7-4v18l7-4z" fill="#7A72AC"/><path d="M48 33l7-4v18l-7-4z" fill="#7A72AC"/> <path d="M12 33l-7-4 7-2zM48 33l7-4-7-2z" fill="#645C96"/> <rect x="12" y="27" width="36" height="22" rx="5" fill="url(#nt1)"/> <rect x="25" y="27" width="10" height="22" fill="#C5BFE6"/> <path d="M27.5 33l5 5-5 5" fill="none" stroke="#7A72AC" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/> <rect x="15" y="30" width="20" height="2.6" rx="1.3" fill="#FFFFFF" opacity=".4" transform="rotate(0)"/>'),
+ portable_toilet:_A('<ellipse cx="30" cy="66.5" rx="17" ry="3.2" fill="#8A7E6E" opacity=".16"/><defs><linearGradient id="pt1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#D3D8E8"/><stop offset="1" stop-color="#AEB6CF"/></linearGradient></defs> <rect x="13" y="12" width="34" height="24" rx="11" fill="#EBEEF6"/><rect x="16.5" y="15.5" width="27" height="17" rx="8" fill="#DDE2EE"/> <rect x="15" y="42" width="30" height="18" rx="3.5" fill="url(#pt1)"/> <ellipse cx="30" cy="42" rx="18" ry="8.6" fill="#FCFAF7"/> <ellipse cx="30" cy="41.4" rx="10.5" ry="4.6" fill="#C6CEE0"/> <path d="M21.5 41.5q4-3.4 8.5-2t8.5 2" fill="none" stroke="#AAB4CC" stroke-width="1.3" opacity=".8"/> <rect x="18" y="47" width="24" height="1.8" rx=".9" fill="#98A2BE" opacity=".5"/>'),
+ cooking_stove:_A('<ellipse cx="30" cy="66.5" rx="17" ry="3.2" fill="#8A7E6E" opacity=".16"/><defs><linearGradient id="st1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9AA3C4"/><stop offset="1" stop-color="#767FA4"/></linearGradient></defs> <path d="M27 14c4.5 4.6 7 7.7 7 11.4A7 7 0 0 1 27 33a7 7 0 0 1-7-7.6c0-3.7 2.5-6.8 7-11.4z" fill="#E8A64C"/> <path d="M27 20.5c2.2 2.4 3.4 4 3.4 5.9a3.4 3.4 0 1 1-6.8 0c0-1.9 1.2-3.5 3.4-5.9z" fill="#F6C97E"/> <circle cx="27" cy="27.5" r="1.7" fill="#FCFAF7"/> <ellipse cx="27" cy="37" rx="11" ry="3.6" fill="#5C6A8E"/><ellipse cx="27" cy="36.2" rx="8" ry="2.3" fill="#4A5878"/> <rect x="9" y="39" width="42" height="20" rx="4.5" fill="url(#st1)"/> <circle cx="43" cy="49" r="4" fill="#FCFAF7"/><rect x="42.2" y="45.8" width="1.6" height="4" rx=".8" fill="#767FA4"/> <rect x="13" y="44" width="14" height="6" rx="3" fill="#5C6A8E"/> <rect x="12" y="59" width="6" height="3" rx="1.5" fill="#5C6A8E"/><rect x="42" y="59" width="6" height="3" rx="1.5" fill="#5C6A8E"/>'),
+ light:_A('<ellipse cx="30" cy="66.5" rx="17" ry="3.2" fill="#8A7E6E" opacity=".16"/><defs><linearGradient id="lt1" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#4E5C80"/><stop offset="1" stop-color="#39435E"/></linearGradient></defs> <path d="M38 22 L56 6 L59 21 Z" fill="#F2D98C" opacity=".9"/><path d="M38 22 L50 11 L52 21 Z" fill="#F8E7B0"/> <rect x="17" y="16" width="22" height="11" rx="4.5" fill="#5C7AA0"/><rect x="17" y="16" width="22" height="4" rx="2" fill="#7A98BC"/> <ellipse cx="38" cy="21.5" rx="3" ry="4.2" fill="#F6E3A8"/> <rect x="21" y="27" width="14" height="34" rx="5.5" fill="url(#lt1)"/> <path d="M23.5 34h9M23.5 39h9" stroke="#2C354C" stroke-width="1.8" stroke-linecap="round"/> <circle cx="28" cy="49" r="2.6" fill="#E8A64C"/> <rect x="23.5" y="29" width="2.6" height="28" rx="1.3" fill="#FFFFFF" opacity=".22"/>'),
+ power_bank:_A('<ellipse cx="30" cy="66.5" rx="17" ry="3.2" fill="#8A7E6E" opacity=".16"/><defs><linearGradient id="pb1" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#91BB85"/><stop offset="1" stop-color="#6C985E"/></linearGradient></defs> <rect x="23" y="9" width="14" height="7" rx="2.4" fill="#55804B"/><rect x="26" y="11" width="3" height="3" rx="1" fill="#DCE8D6"/><rect x="31" y="11" width="3" height="3" rx="1" fill="#DCE8D6"/> <rect x="17" y="15" width="26" height="46" rx="7" fill="url(#pb1)"/> <path d="M32 24l-8.5 13h5.5l-2.5 11 9-14h-5.5z" fill="#FCFAF7"/> <circle cx="24" cy="55" r="1.6" fill="#DCE8D6"/><circle cx="30" cy="55" r="1.6" fill="#DCE8D6"/><circle cx="36" cy="55" r="1.6" fill="#DCE8D6" opacity=".45"/> <rect x="20" y="18" width="3" height="40" rx="1.5" fill="#FFFFFF" opacity=".28"/>'),
+ radio:_A('<ellipse cx="30" cy="66.5" rx="17" ry="3.2" fill="#8A7E6E" opacity=".16"/><defs><linearGradient id="rd1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#C8AE74"/><stop offset="1" stop-color="#A48C58"/></linearGradient></defs> <path d="M43 8 L24 24" stroke="#7A6A50" stroke-width="2.6" stroke-linecap="round"/><circle cx="43" cy="8" r="2" fill="#7A6A50"/> <rect x="9" y="24" width="42" height="34" rx="6.5" fill="url(#rd1)"/> <circle cx="22" cy="41" r="9.5" fill="#FCFAF7"/><circle cx="22" cy="41" r="9.5" fill="none" stroke="#E0D2AC" stroke-width="1.4"/> <path d="M16 37.5h12M16 41h12M16 44.5h12" stroke="#D9C9A8" stroke-width="1.6" stroke-linecap="round"/> <circle cx="41" cy="34" r="4.6" fill="#F2EBE2"/><path d="M41 34l2.8-2.6" stroke="#A48C58" stroke-width="1.6" stroke-linecap="round"/> <rect x="35" y="43" width="12" height="4.6" rx="2.3" fill="#F2EBE2"/><rect x="35" y="43" width="6" height="4.6" rx="2.3" fill="#E8A64C"/> <rect x="12" y="27" width="36" height="2.6" rx="1.3" fill="#FFFFFF" opacity=".3"/>'),
+ medical:_A('<ellipse cx="30" cy="66.5" rx="17" ry="3.2" fill="#8A7E6E" opacity=".16"/><defs><linearGradient id="md1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFEFC"/><stop offset="1" stop-color="#F3E9EA"/></linearGradient></defs> <path d="M22 24v-4a8 8 0 0 1 16 0v4" fill="none" stroke="#C9A0A6" stroke-width="3.4" stroke-linecap="round"/> <rect x="11" y="24" width="38" height="36" rx="6.5" fill="url(#md1)" stroke="#E0C8CC" stroke-width="1.5"/> <rect x="26.5" y="31" width="7" height="22" rx="2.4" fill="#C0605E"/> <rect x="19" y="38.5" width="22" height="7" rx="2.4" fill="#C0605E"/> <rect x="17" y="24" width="5" height="4.5" rx="1.5" fill="#D8B4B9"/><rect x="38" y="24" width="5" height="4.5" rx="1.5" fill="#D8B4B9"/>'),
+ cash:_A('<ellipse cx="30" cy="66.5" rx="17" ry="3.2" fill="#8A7E6E" opacity=".16"/><defs><linearGradient id="cs1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B7D3AE"/><stop offset="1" stop-color="#8FB884"/></linearGradient></defs> <circle cx="43" cy="30" r="9.5" fill="#E9C86E" stroke="#C9A64C" stroke-width="1.6"/> <path d="M40 26.5l3 3.6 3-3.6M43 30v5M40.8 31.4h4.4M40.8 33.6h4.4" fill="none" stroke="#A8853C" stroke-width="1.4" stroke-linecap="round"/> <rect x="12" y="36" width="34" height="21" rx="3" fill="#7DA86F" opacity=".55" transform="rotate(-3 29 46)"/> <rect x="10" y="37" width="35" height="21" rx="3" fill="url(#cs1)"/> <rect x="13" y="40" width="29" height="15" rx="1.8" fill="none" stroke="#FCFAF7" stroke-width="1.2" opacity=".8"/> <circle cx="27.5" cy="47.5" r="5.6" fill="#FCFAF7"/> <path d="M25.5 44.8l2 2.6 2-2.6M27.5 47.4v3.4M26 48.4h3M26 50h3" fill="none" stroke="#7DA86F" stroke-width="1.2" stroke-linecap="round"/>'),
+ hygiene:_A('<ellipse cx="30" cy="66.5" rx="17" ry="3.2" fill="#8A7E6E" opacity=".16"/><defs><linearGradient id="hg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E9E5F4"/><stop offset="1" stop-color="#CCC5E4"/></linearGradient></defs> <path d="M30 20h12a10 13 0 0 1 0 26h-12z" fill="#D8D2EA"/> <ellipse cx="42" cy="33" rx="6.4" ry="13" fill="#C4BCE0"/><ellipse cx="42" cy="33" rx="2.6" ry="5.2" fill="#9189C0"/> <circle cx="26" cy="33" r="14" fill="url(#hg1)"/><circle cx="26" cy="33" r="14" fill="none" stroke="#B4AEDB" stroke-width="1.4"/> <ellipse cx="26" cy="33" rx="5" ry="5.4" fill="#9189C0"/><ellipse cx="26" cy="33" rx="2.4" ry="2.8" fill="#E9E5F4"/> <rect x="34" y="42" width="9.5" height="19" fill="#F4F1FA"/><path d="M34 61l4.75 3 4.75-3" fill="#F4F1FA"/> <path d="M34 48h9.5" stroke="#B4AEDB" stroke-width="1" stroke-dasharray="1.8 1.8"/>'),
+ infant_milk:_A('<ellipse cx="30" cy="66.5" rx="17" ry="3.2" fill="#8A7E6E" opacity=".16"/><defs><linearGradient id="if1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FEFCF9"/><stop offset="1" stop-color="#F2ECE1"/></linearGradient></defs> <path d="M26 13a4 4.6 0 0 1 8 0v3h-8z" fill="#E8A0A6"/> <rect x="21" y="16" width="18" height="7" rx="2.6" fill="#9189C0"/> <rect x="19" y="23" width="22" height="39" rx="7.5" fill="url(#if1)" stroke="#E4E0EC" stroke-width="1.4"/> <rect x="20.2" y="42" width="19.6" height="19" rx="6.5" fill="#FBF0DC"/> <path d="M35 29h3.5M35 35h3.5M35 41h3.5" stroke="#B4AEDB" stroke-width="1.6" stroke-linecap="round"/> <path d="M27.8 33.2a2 2 0 0 1 2.2-.9 2 2 0 0 1 2.2.9c.5.9.1 2-.9 2.9l-1.3 1.2-1.3-1.2c-1-.9-1.4-2-.9-2.9z" fill="#E8A0A6"/>'),
+ pet_food:_A('<ellipse cx="30" cy="66.5" rx="17" ry="3.2" fill="#8A7E6E" opacity=".16"/><defs><linearGradient id="pw1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#C8AE74"/><stop offset="1" stop-color="#A48C58"/></linearGradient></defs> <ellipse cx="30" cy="30" rx="9.5" ry="8" fill="#B49A63"/> <ellipse cx="17.5" cy="21.5" rx="3.8" ry="4.4" fill="#B49A63"/><ellipse cx="25" cy="15.5" rx="3.8" ry="4.4" fill="#B49A63"/><ellipse cx="35" cy="15.5" rx="3.8" ry="4.4" fill="#B49A63"/><ellipse cx="42.5" cy="21.5" rx="3.8" ry="4.4" fill="#B49A63"/> <path d="M13 52a17 8.5 0 0 0 34 0l-2-6H15z" fill="url(#pw1)"/> <ellipse cx="30" cy="46" rx="17" ry="5.6" fill="#8A7148"/><ellipse cx="30" cy="45.4" rx="14" ry="4.2" fill="#6E5A3A"/> <circle cx="25" cy="44.6" r="2" fill="#E3C688"/><circle cx="31" cy="43.6" r="2" fill="#E3C688"/><circle cx="36" cy="45" r="2" fill="#E3C688"/> <path d="M17 55h26" stroke="#FCFAF7" stroke-width="1.4" opacity=".4"/>'),
+ infant_diaper:_A('<ellipse cx="30" cy="66.5" rx="17" ry="3.2" fill="#8A7E6E" opacity=".16"/><defs><linearGradient id="dp1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FDFBF8"/><stop offset="1" stop-color="#EFE8DB"/></linearGradient></defs><path d="M16 24h28l-3 8H19z" fill="#EDE5F1"/><rect x="10" y="29.5" width="5.5" height="6" rx="2" fill="#9189C0"/><rect x="44.5" y="29.5" width="5.5" height="6" rx="2" fill="#9189C0"/><rect x="14" y="28" width="32" height="9" rx="3" fill="#B4AEDB"/><path d="M14 37h32l-5 14a11 11 0 0 1-22 0z" fill="url(#dp1)" stroke="#E4DCEA" stroke-width="1.2"/><path d="M26.2 44.4a1.9 1.9 0 0 1 2.1-.8 1.9 1.9 0 0 1 2.1.8c.5.8.1 1.9-.8 2.7l-1.3 1.1-1.3-1.1c-.9-.8-1.3-1.9-.8-2.7z" fill="#E8A0A6"/>'),
+ infant_food:_A('<ellipse cx="30" cy="66.5" rx="17" ry="3.2" fill="#8A7E6E" opacity=".16"/><defs><linearGradient id="bf1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F9F5EC"/><stop offset="1" stop-color="#EFE7D6"/></linearGradient></defs><rect x="19" y="15" width="22" height="8" rx="3.4" fill="#D9B36A"/><path d="M22 15v8M30 15v8M38 15v8" stroke="#C29B54" stroke-width="1.2"/><rect x="17" y="23" width="26" height="34" rx="6" fill="url(#bf1)" stroke="#E4DACF" stroke-width="1.2"/><rect x="19.5" y="40" width="21" height="14" rx="4" fill="#E8A64C" opacity=".85"/><rect x="20.5" y="29" width="19" height="14" rx="2" fill="#FCFAF7" stroke="#E4DACF" stroke-width="1"/><circle cx="30" cy="36.5" r="3.6" fill="#C8504E"/><path d="M30 32.6q1.6-1.6 3.2-1" fill="none" stroke="#7DA86F" stroke-width="1.5" stroke-linecap="round"/><rect x="20.5" y="26" width="3" height="26" rx="1.5" fill="#FFFFFF" opacity=".4"/>'),
+ infant_care:_A('<ellipse cx="30" cy="66.5" rx="17" ry="3.2" fill="#8A7E6E" opacity=".16"/><rect x="15" y="27" width="28" height="10" rx="3.5" fill="#FCFAF7" stroke="#E4E0EC" stroke-width="1.2"/><rect x="15" y="37" width="28" height="10" rx="3.5" fill="#EFEAF6" stroke="#E0DAEC" stroke-width="1.2"/><rect x="15" y="47" width="28" height="10" rx="3.5" fill="#FCFAF7" stroke="#E4E0EC" stroke-width="1.2"/><path d="M19 42h20" stroke="#C9C0DE" stroke-width="1.2" stroke-dasharray="2.4 2.2"/><path d="M19 52h20" stroke="#D8D2E4" stroke-width="1.2" stroke-dasharray="2.4 2.2"/><circle cx="46" cy="23" r="4.6" fill="none" stroke="#D9B36A" stroke-width="2.4"/><path d="M46 27.5v6" stroke="#D9B36A" stroke-width="2.4" stroke-linecap="round"/>'),
+ pet_meds:_A('<ellipse cx="30" cy="66.5" rx="17" ry="3.2" fill="#8A7E6E" opacity=".16"/><rect x="15" y="15" width="19" height="8.5" rx="3" fill="#9189C0"/><rect x="16.5" y="23.5" width="16" height="34" rx="4" fill="#FCFAF7" stroke="#E0C8CC" stroke-width="1.3"/><rect x="18.5" y="33" width="12" height="13" rx="2" fill="#F3EEF7"/><ellipse cx="24.5" cy="41" rx="3.2" ry="2.6" fill="#B49A63"/><circle cx="21.2" cy="37.6" r="1.3" fill="#B49A63"/><circle cx="24.5" cy="36.4" r="1.3" fill="#B49A63"/><circle cx="27.8" cy="37.6" r="1.3" fill="#B49A63"/><rect x="37" y="42" width="11" height="5.4" rx="2.7" fill="#C0605E"/><rect x="37" y="42" width="5.5" height="5.4" rx="2.7" fill="#FCFAF7" stroke="#E0C8CC" stroke-width="1"/><circle cx="45" cy="55" r="2.8" fill="#C9CFE3"/>'),
+ pet_gear:_A('<ellipse cx="30" cy="66.5" rx="17" ry="3.2" fill="#8A7E6E" opacity=".16"/><path d="M42 44q9-7 7-21" fill="none" stroke="#8A7148" stroke-width="3" stroke-linecap="round"/><circle cx="49" cy="21" r="2.4" fill="#8A7148"/><circle cx="28" cy="42" r="13" fill="none" stroke="#C8504E" stroke-width="7"/><rect x="24" y="27.5" width="8" height="5.5" rx="1.6" fill="#D9B36A"/><circle cx="28" cy="58.5" r="4.6" fill="#E9C86E" stroke="#C9A64C" stroke-width="1.4"/><circle cx="28" cy="57" r="1.1" fill="#A8853C"/>'),
+ pet_supplies:_A('<ellipse cx="30" cy="66.5" rx="17" ry="3.2" fill="#8A7E6E" opacity=".16"/><rect x="17" y="24" width="26" height="6" rx="3" fill="#E2ECF4"/><rect x="15" y="29" width="30" height="6" rx="3" fill="#EFEAF6"/><rect x="12" y="34" width="36" height="24" rx="4" fill="#FCFAF7" stroke="#E4E0EC" stroke-width="1.3"/><rect x="17" y="39" width="26" height="14" rx="3" fill="#CBE0EE"/><ellipse cx="30" cy="47" rx="2.9" ry="2.4" fill="#8A93B8"/><circle cx="27" cy="43.8" r="1.2" fill="#8A93B8"/><circle cx="30" cy="42.8" r="1.2" fill="#8A93B8"/><circle cx="33" cy="43.8" r="1.2" fill="#8A93B8"/>'),
+};
+function renderRecommend(){
+  const L=t();const cat=catalog();
+  if(!cat.length)return `<div class="empty">${state.lang==='ja'?'おすすめの リストを ひらけません。':'Recommended list unavailable'}</div>`;
+  const cov=C.computeCoverage(supplies(),cat,family(),NOW);
+  // Card ordering: "most-needed-during-a-disaster first" (water/staple food on top), not sorted by coverage status. Items not on the list (infant/pet) come after the 14 items, before the Extra card.
+  const ORDER=['water','food_staple','portable_toilet','light','radio','cash','food_retort','food_canned','food_dry','food_nutrition','hygiene','medical','power_bank','cooking_stove'];
+  const ordIdx=(id)=>{const i=ORDER.indexOf(id);return i<0?ORDER.length:i;};
+  const rows=[...cov.rows].sort((a,b)=>ordIdx(a.rule_id)-ordIdx(b.rule_id));
+  const missing=cov.rows.filter(r=>r.status==='missing').length;
+  const partial=cov.rows.filter(r=>r.status==='partial').length;
+  const stripOf=(s)=>s==='missing'?'s-alert':s==='partial'?'s-info':s==='unknown'?'s-gold':'s-cover';
+  const pillOf=(s)=>s==='missing'?'p-alert':s==='partial'?'p-info':s==='unknown'?'p-mute':s==='covered_expiring'?'p-gold':'p-cover';
+  const ringOf=(s)=>s==='missing'?'missing':s==='partial'?'partial':s==='unknown'?'unknown':'cover';
+  // Image = a photo of an item already registered under this rule (used when available, otherwise fallback text)
+  // RC = text only (photos belong to My Emergency Kit; pictograms are only for Profile)
+  let h=`<div class="sec-h page-h">${esc(L.rec.title)}</div><div class="src-note">${esc(L.rec.desc)}</div>
+  <div class="stats">
+    <div class="stat"><div class="v">${cov.percent}%</div><div class="l">${esc(L.rec.sum.covered)}</div></div>
+    <div class="stat"><div class="v">${cov.coveredCount}/${cov.applicableCount}</div><div class="l">${esc(L.rec.sum.items)}</div></div>
+    <div class="stat"><div class="v">${missing}</div><div class="l">${esc(L.rec.sum.toAdd)}</div></div>
+    <div class="stat"><div class="v">${partial}</div><div class="l">${esc(L.rec.sum.inProgress)}</div></div>
+  </div>
+  <div class="grid">`+rows.filter(r=>!r.needs).map(r=>cardOf(r)).join('')+`</div>`
+  +[['has_infant',L.rec.groupInfant],['has_pet',L.rec.groupPet]].map(([g,label])=>{
+    const grp=rows.filter(r=>r.needs===g);
+    if(!grp.length)return '';
+    return `<div class="rc-group"><div class="rc-group-h">${esc(label)}</div><div class="grid">${grp.map(r=>cardOf(r)).join('')}</div></div>`;
+  }).join('');
+  function cardOf(r){
+    const nm=state.lang==='ja'?r.name_ja:r.name_en;const unit=state.lang==='ja'?(r.target.unit||''):(EN_UNIT[r.target.unit]||r.target.unit||'');const lvl=SRC_LEVEL(r.source);
+    const pct=Math.min(100,r.targetValue?Math.round(r.have/r.targetValue*100):0);
+    const need=Math.max(0,r.targetValue-r.have);
+    const act=(r.status==='missing'||r.status==='partial');
+    return `<div class="card"><div class="strip ${stripOf(r.status)}"></div>
+      <div class="rc-row">
+        <div class="rc-mid">
+          <div class="c-name">${esc(nm)}</div>
+          <div class="rc-pill-row"><span class="pill ${pillOf(r.status)}">${esc(L.rec.st[r.status]||r.status)}</span></div>
+          ${r.target.type==='per_household'?`<div class="c-target">${L.rec.have} <b>${r.have}</b> · ${esc(L.asNeededT)}</div>`:`<div class="c-target">${L.rec.have} <b>${r.have}</b> / ${r.targetValue} ${esc(unit)}</div>
+          ${act?`<div class="c-need">${L.rec.need} ${need} ${esc(unit)}</div>`:''}`}
+          ${(state.lang==='ja'?r.note_ja:r.note_en)?`<div class="rc-note-box">${esc(state.lang==='ja'?r.note_ja:r.note_en)}</div>`:''}
+          <div class="c-src"><span class="src-badge sb-${lvl}">${esc(L.rec.lvl[lvl])}</span></div>
+        </div>
+        <div class="cov-ring ${ringOf(r.status)}" style="--p:${pct}"><span>${pct}%</span></div>
+      </div>
+      <div class="c-actions"><button class="icon-btn" onclick="App.addFromRule('${r.rule_id}')">${L.rec.add}</button></div></div>`; // At 100% coverage the Add button does not disappear (you can keep adding; RC is the primary add entry and stays open)
+  }
+  // Trailing "Extra kit items" free-entry point (Ready Check is the primary add entry). openAdd -> name has no match -> matched_rule_id=null -> not counted in coverage, still stored, still offered by Lens "Bring from your kit".
+  h+=`<div class="grid" style="margin-top:16px"><div class="card"><div class="strip s-info"></div>
+    <div class="rc-row"><div class="rc-mid">
+      <div class="c-name">${esc(L.rec.extraName)}</div>
+      <div class="c-line" style="margin-top:4px;line-height:1.55">${esc(L.rec.extraDesc)}</div>
+      <div class="c-src"><span class="src-badge sb-household">${esc(L.rec.lvl.household)}</span></div>
+    </div></div>
+    <div class="c-actions"><button class="icon-btn" onclick="App.openAdd()">${esc(L.rec.extraAdd)}</button></div>
+  </div></div>`;
+  return h;
+}
+
+// ---- STOCK (restock fast-log ledger, v0.5) ----
+
+// ---- PROFILE (household calculator + storage list + address shell, v0.5) ----
+// Official pack list (for granular auto-update consent). Consent is stored in user_profile.pack_consent (default on).
+const PACKS=[
+  {key:'facilities',ja:'避難所（ひなんじょ）・支援（しえん）施設（しせつ）',en:'Shelters & support facilities'},
+  {key:'elevation',ja:'海抜（かいばつ）・ハザードデータ',en:'Elevation / hazard data'},
+  {key:'supply',ja:'防災（ぼうさい）用品（ようひん）の 目安（めやす）データ',en:'Preparedness guidance'},
+];
+// Real source URLs (stored in the data files) turned into clickable 出典 links, replacing the fake update button.
+const PACK_SOURCES=[
+  {en:'Minato City Open Data — shelters & AEDs',ja:'港区（みなとく）オープンデータ — 避難所（ひなんじょ）・AED',url:'https://opendata.city.minato.tokyo.jp/'},
+  {en:'Tokyo Waterworks — disaster water stations',ja:'東京都水道局（とうきょうとすいどうきょく） — 災害時給水（さいがいじきゅうすい）ステーション',url:'https://catalog.data.metro.tokyo.lg.jp/dataset/t000019d0000000001'},
+  {en:'Geospatial Information Authority of Japan (GSI) — elevation',ja:'国土地理院（こくどちりいん） — 海抜（かいばつ）',url:'https://maps.gsi.go.jp/development/elevation.html'},
+  {en:'Cabinet Secretariat — preparedness guidance',ja:'首相官邸（しゅしょうかんてい） — 備（そな）えの 目安（めやす）',url:'https://www.kantei.go.jp/jp/headline/bousai/sonae.html'},
+  {en:'MAFF — food stockpile guide',ja:'農林水産省（のうりんすいさんしょう） — 食品（しょくひん）ストックガイド',url:'https://www.maff.go.jp/j/zyukyu/foodstock/guidebook.html'},
+  {en:'Tokyo Bichiku Navi — preparedness amounts',ja:'東京備蓄（とうきょうびちく）ナビ — 備蓄量（びちくりょう）の 目安（めやす）',url:'https://www.bichiku.metro.tokyo.lg.jp/'},
+  {en:'Cabinet Office — evacuation shelter toilet guideline (5 uses/day)',ja:'内閣府（ないかくふ） — トイレの 備（そな）えの 目安（めやす）（1日（にち）5回（かい））',url:'https://www.bousai.go.jp/taisaku/hinanjo/pdf/1604hinanjo_toilet_guideline.pdf'},
+  {en:'Cabinet Office — disaster note for babies and mothers',ja:'内閣府（ないかくふ） — あかちゃんと ママを 守（まも）る 防災（ぼうさい）ノート',url:'https://www.bousai.go.jp/kaigirep/kentokai/hinanzyokakuho/wg_situ/pdf/dai3kaisankou4.pdf'},
+  {en:'Sapporo City — disaster goods list for babies',ja:'札幌市（さっぽろし） — 赤（あか）ちゃんの ための 防災（ぼうさい）グッズリスト',url:'https://www.city.sapporo.jp/chuo/kenko/recipe/akachanbousai.html'},
+  {en:'Ministry of the Environment — disaster preparedness for pet owners',ja:'環境省（かんきょうしょう） — ペットの 災害対策（さいがいたいさく）',url:'https://www.env.go.jp/nature/dobutsu/aigo/2_data/pamph/h3009a.html'},
+  {en:'Minato City — disaster preparedness for pets',ja:'港区（みなとく） — ペットの 災害対策（さいがいたいさく）',url:'https://www.city.minato.tokyo.jp/seikatsueiseisoudan/kurashi/dobutsu/pet/pet/petbousai.html'},
+  {en:'METI — emergency toilet stockpile',ja:'経済産業省（けいざいさんぎょうしょう） — トイレの 備蓄（びちく）',url:'https://www.meti.go.jp/policy/mono_info_service/mono/jyutaku/toirebichiku.html'},
+];
+function renderProfile(){
+  const L=t();const fam=family();const locs=fam.storageLocations||[];const up=state.data.userDoc?.user_profile||{};
+  const pc=up.pack_consent||{};const packOn=k=>pc[k]!==false;const allPacksOn=PACKS.every(p=>packOn(p.key));
+  const coords=up.coords&&typeof up.coords.lat==='number'?up.coords:null;
+  const nf=coords?(C.nearestFacilities(coords,facilities())[0]||null):null;
+  // Mobile is the primary view. Keep the two identity inputs (My family + My place) open at the top; everything below is read-only reference or occasional settings -> collapsible so the page is not one long scroll. Open state lives in state.profOpen so a re-render (e.g. a stepper press) does not snap sections shut.
+  const sec=(k,title,body)=>`<details class="prof-sec"${state.profOpen[k]?' open':''} ontoggle="App.profToggle('${k}',this.open)"><summary class="sec-h prof-sum">${esc(title)}</summary><div class="prof-sec-body">${body}</div></details>`;
+  const familyBlock=`<div class="sec-h page-h">${esc(L.tabs.profile)}</div><div class="sec-h">${esc(L.prof.family)}</div>
+   <div class="grid fam-grid">
+    <div class="card"><div class="strip s-calm"></div><div class="c-name">${esc(L.prof.adults)}</div><div class="stepper"><button onclick="App.fam('familyAdults',-1)">−</button><span class="val">${fam.familyAdults}</span><button onclick="App.fam('familyAdults',1)">＋</button></div></div>
+    <div class="card"><div class="strip s-calm"></div><div class="c-name">${esc(L.prof.children)}</div><div class="stepper"><button onclick="App.fam('familyChildren',-1)">−</button><span class="val">${fam.familyChildren}</span><button onclick="App.fam('familyChildren',1)">＋</button></div></div>
+    <div class="card"><div class="strip s-calm"></div><div class="c-name">${esc(L.prof.infants)}</div><div class="stepper"><button onclick="App.fam('familyInfants',-1)">−</button><span class="val">${fam.familyInfants||0}</span><button onclick="App.fam('familyInfants',1)">＋</button></div></div>
+    <div class="card"><div class="strip s-calm"></div><div class="c-name">${esc(L.prof.pets)}</div><div class="stepper"><button onclick="App.fam('familyPets',-1)">−</button><span class="val">${fam.familyPets||0}</span><button onclick="App.fam('familyPets',1)">＋</button></div></div>
+    <div class="card"><div class="strip s-gold"></div><div class="c-name">${esc(L.prof.days)}</div><div class="stepper"><button onclick="App.fam('targetDays',-1)">−</button><span class="val">${fam.targetDays}</span><button onclick="App.fam('targetDays',1)">＋</button></div></div>
+   </div>
+   <div class="c-line" style="margin:8px 2px;color:var(--ink-soft)">${esc(L.prof.targetNote)}</div>
+   <div class="c-line" style="margin:0 2px 8px;color:var(--ink-faint);font-size:11px">${esc(L.prof.babyNote)}</div>`;
+  const placeBlock=`<div class="sec-h">${esc(L.prof.location)}</div>
+   <div class="c-line" style="margin:0 2px 8px;color:var(--ink-soft)">${esc(L.prof.locDesc)}</div>
+   <div class="field"><input id="p-address" value="${esc(up.address||'')}" placeholder="${esc(L.prof.addressPh)}"></div>
+   <button class="btn btn-primary" onclick="App.setDemoLocation()">${esc(L.prof.setDemo)}</button>
+   ${up.demo_location_name?`<div class="c-line" style="margin-top:8px">📍 ${esc(L.prof.current)}：<b>${esc(up.demo_location_name)}</b></div>`:''}
+   ${nf?`<div class="c-line" style="margin-top:6px">${esc(L.prof.nearestIs)}：<b>${esc(nf.facility.name)}</b> · ${esc(C.formatDistance(nf.distance_m,state.lang))}</div>`:`<div class="c-line" style="margin-top:6px;color:var(--ink-faint)">${esc(L.prof.noLoc)}</div>`}
+   <div class="loc-chips" style="margin-top:7px">${demoLocs().map(d=>`<button class="loc-chip" onclick="App.setDemoLocation('${esc(jsq((d.aliases&&d.aliases[0])||d.display_name))}')">${esc(d.display_name)}</button>`).join('')}</div>
+   <div class="c-line" style="margin:6px 2px;color:var(--ink-faint);font-size:11px">${esc(L.prof.addressNote)}</div>`;
+  const needsBody=`<div class="src-note">${esc(L.srcNote)}</div>
+   ${catalog().length?(()=>{ // 目安 cards use the same logic as RC: separate infant/pet containers
+     const rows=C.buildRecommendedList(catalog(),fam).filter(r=>r.applicable);
+     const pCard=(r)=>{const nm=state.lang==='ja'?r.name_ja:r.name_en;const note=state.lang==='ja'?r.note_ja:r.note_en;return `<div class="card"><div class="strip s-calm"></div>${RULE_ART[r.rule_id]?`<div class="cat-ico" aria-hidden="true">${RULE_ART[r.rule_id]}</div>`:''}<div class="c-name" style="font-size:14px">${esc(nm)}</div><div class="c-target">${r.target.type==='per_household'?esc(L.asNeeded):`<b>${r.target.value}</b> ${esc(r.target.unit||'')}`}</div>${note?`<div class="rc-note-box" style="text-align:left">${esc(note)}</div>`:''}</div>`;};
+     return `<div class="grid">${rows.filter(r=>!r.needs).map(pCard).join('')}</div>`
+       +[['has_infant',L.rec.groupInfant],['has_pet',L.rec.groupPet]].map(([g,label])=>{
+         const grp=rows.filter(r=>r.needs===g);
+         return grp.length?`<div class="rc-group"><div class="rc-group-h">${esc(label)}</div><div class="grid">${grp.map(pCard).join('')}</div></div>`:'';
+       }).join('');
+   })():`<div class="empty"><div class="empty-ic" aria-hidden="true">✦</div>${esc(L.emptyNote)}</div>`}`;
+  const storageBody=`<div class="c-line" style="margin:0 2px 8px;color:var(--ink-soft)">${esc(L.prof.storageNote)}</div>
+   <div class="loc-chips">${locs.map(loc=>`<span class="loc-chip on">${esc(locDisp(loc))}<span class="x" onclick="App.delStorage('${esc(jsq(loc))}')">✕</span></span>`).join('')}<button class="loc-chip" onclick="App.addStorageProfile()">${esc(L.prof.addStorage)}</button></div>`;
+  const packBody=`<div class="c-line" style="margin:0 2px 8px;color:var(--ink-soft)">${esc(L.prof.packDesc)}</div>
+   <div class="card" style="padding:12px">
+     <div class="c-line" style="display:flex;justify-content:space-between"><span>${esc(L.prof.packLast)}</span><b>${esc(packMeta().date)}</b></div>
+     <div class="c-line" style="display:flex;justify-content:space-between;margin-top:4px"><span>${esc(L.prof.packSource)}</span><b style="font-size:12px;text-align:right">${esc(packMeta().source)}</b></div>
+     <div class="c-line" style="margin-top:12px;font-weight:600">${esc(L.prof.packConsent)}</div>
+     <label class="c-line" style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer;font-weight:600"><input type="checkbox" ${allPacksOn?'checked':''} onchange="App.packAll(this.checked)"> ${esc(L.prof.packAll)}</label>
+     <div style="border-top:1px solid var(--line);margin:9px 0 2px"></div>
+     ${PACKS.map(p=>`<label class="c-line" style="display:flex;align-items:center;gap:8px;margin-top:7px;cursor:pointer"><input type="checkbox" ${packOn(p.key)?'checked':''} onchange="App.togglePack('${p.key}')"> ${esc(state.lang==='ja'?p.ja:p.en)}</label>`).join('')}
+     <!-- Hide the fake "Check for updates" button (no real fetch manifest / version compare / download = overclaim). Keep consent (future-facing) + pack date/source. -->
+   </div>`;
+  const sourcesBody=`<div class="c-line" style="margin:0 2px 8px;color:var(--ink-soft)">${esc(L.prof.srcIntro)}</div>
+   <div class="src-links">${PACK_SOURCES.map(s=>`<a href="${s.url}" target="_blank" rel="noopener noreferrer" class="src-link">${esc(state.lang==='ja'?s.ja:s.en)} ↗</a>`).join('')}</div>`;
+  const portalBody=`<div class="c-line" style="margin:0 2px 8px;color:var(--ink-soft)">${esc(L.prof.portalDesc)}</div>
+   <a class="btn btn-primary" href="https://city-minato.my.site.com" target="_blank" rel="noopener noreferrer" style="display:block;text-align:center;text-decoration:none">${esc(L.prof.portalLink)}</a>
+   <div class="c-line" style="margin:6px 2px;color:var(--ink-faint);font-size:11px">city-minato.my.site.com · ${esc(L.prof.packSource)}：港区（みなとく）</div>`;
+  return familyBlock+placeBlock
+    +sec('needs',L.prof.listTitle,needsBody)
+    +sec('storage',L.prof.storage,storageBody)
+    +sec('pack',L.prof.packTitle,packBody)
+    +sec('sources',L.prof.srcTitle,sourcesBody)
+    +sec('portal',L.prof.portalTitle,portalBody);
+}
+// Official pack status (出典/date) — taken from the local pack _meta
+function packMeta(){
+  const meta=(state.data.facDoc&&state.data.facDoc._meta)||{};
+  const m=String(meta.source_year||'2026').match(/\d{4}/);const yr=m?m[0]:'2026';
+  return {date:yr,source:state.lang==='ja'?'港区（みなとく）・東京都水道局（とうきょうとすいどうきょく）':'Minato City · Tokyo Waterworks (official)'};
+}
+
+// ---- Redraw the modal's storage-location buttons ----
+function renderModalLocs(){
+  const el=document.getElementById('m-locs');if(!el)return;const locs=family().storageLocations||[];
+  el.innerHTML=locs.map(loc=>`<button type="button" class="loc-chip ${state.modal.storage===loc?'on':''}" onclick="App.pickStorage('${esc(jsq(loc))}')">${esc(locDisp(loc))}</button>`).join('')+`<button type="button" class="loc-chip" onclick="App.addStorage()">＋</button>`;
+}
+
+// ---- MATCH BOX (scan -> match; low confidence needs manual confirmation) ----
+function renderMatchBox(){
+  // 🔒 The internal rule-matching mechanism stays hidden (it is the Ready Check "coverage rule", not a category. Exposing it as a category picker = exposing the internal ledger/UUID = unacceptable).
+  // Do not show cert% / rule chips / ask the user to pick. Only use plain language to indicate whether this item counts toward Ready Check (read-only).
+  const box=document.getElementById('m-match');if(!box)return;
+  const m=state.currentMatch;const ja=state.lang==='ja';
+  if(!m){box.innerHTML='';return;}  // Name not entered yet -> show nothing
+  const rid=(m.matched_rule_id&&!m.needs_manual_confirm)?m.matched_rule_id:null;
+  const rule=rid?catalog().find(r=>r.rule_id===rid):null;  // water_storage/no-match -> rule=null -> not counted (a container does not falsely report drinking water)
+  if(rule){
+    box.innerHTML='';  // Successful match = silent (the ✓ confirmation line is dev info; a user seeing a mismatch cannot act on it); only "not counted" gets a prompt
+  }else{
+    box.innerHTML=`<div class="rc-note rc-no">${ja?'備（そな）えチェックには 数（かぞ）えません（その他（た）の 備（そな）え）':'Not counted in Ready Check (extra kit item)'}</div>`;
+  }
+  applyRuby(box);
+}
+
+// ---- MODAL ----
+function openModal(item,opts={}){
+  const L=t();const isEdit=!!(item&&item.item_id);
+  state.editing=isEdit?item.item_id:null;
+  state.currentMatch=opts.matchRule?{matched_rule_id:opts.matchRule.rule_id,confidence:1,needs_manual_confirm:false,manual:true}:(item&&item.matched_rule_id?{matched_rule_id:item.matched_rule_id,confidence:item.match_confidence||1,needs_manual_confirm:!!item.needs_manual_confirm,existing:true}:null);  // Editing an existing item: initialize from the existing rule (Q2: opening/renaming does not lose coverage)
+  const it=item||{name_en:'',name_ja:'',category:'other',quantity:0,targetQuantity:1,expiryDate:'',storageLocation:''};  // New item quantity defaults to 0; the その他の備え entry defaults to category=other=free zone (if the user wants it counted, they pick a category themselves = responsible)
+  state.modal={itemId:isEdit?item.item_id:('kit-'+Date.now()),storage:it.storageLocation||'',photo:it.photo||null,photoLabel:it.photoLabel||null};
+  const locs=(family().storageLocations||[]);
+  const cats=['water','food','toilet','cooking','light','power','info','medical','cash','hygiene','child','pet','tools','other'];
+  const curCat=it.category||'other';const catOpts=cats.includes(curCat)?cats:[curCat,...cats];  // an unknown category does not fall back to water (round-trip safe)
+  document.getElementById('modal').innerHTML=`<h3>${isEdit?L.editTitle:L.addTitle}</h3>
+    <div class="match-box" id="m-match"></div>
+    <div class="photo-row">
+      <label class="photo-box ${it.photo?'has':''}" id="m-pbox-front"><input type="file" accept="image/png,image/jpeg" onchange="App.uploadPhoto(this,'front')">${it.photo?`<img src="${esc(it.photo)}">`:`<span class="ph">📷</span><span class="pl">${L.photoFront}</span>`}</label>
+      <label class="photo-box ${it.photoLabel?'has':''}" id="m-pbox-label"><input type="file" accept="image/png,image/jpeg" onchange="App.uploadPhoto(this,'label')">${it.photoLabel?`<img src="${esc(it.photoLabel)}">`:`<span class="ph">🏷️</span><span class="pl">${L.photoLabel}</span>`}</label>
+    </div>
+    <div class="c-line" style="font-size:11px;color:var(--ink-faint);margin-top:4px">📷 ${L.photoHint}</div>
+    <div class="field"><label>${L.fName}</label><input id="m-en" value="${esc(it.name_en)}" onchange="App.matchName()"></div>
+    <div class="field"><label>${L.fNameJa}</label><input id="m-ja" value="${esc(it.name_ja)}" onchange="App.matchName()"></div>
+    <div class="field"><label>${L.fCat}</label><select id="m-cat" onchange="App.catChanged()">${catOpts.map(c=>`<option value="${esc(c)}" ${curCat===c?'selected':''}>${esc(L.cat[c]||L.cat.other)}</option>`).join('')}</select></div>
+    <div class="row"><div class="field"><label>${L.fQty} <span id="m-qty-unit" style="color:var(--ink-faint);font-weight:400"></span></label><input id="m-qty" type="number" value="${it.quantity}"><div id="m-qty-hint" style="font-size:11px;color:var(--ink-faint);margin-top:3px;line-height:1.4"></div></div>
+      <div class="field"><label>${L.fTarget}</label><input id="m-tgt" type="number" value="${it.targetQuantity}" readonly class="m-auto" title="${state.lang==='ja'?'家族（かぞく）の 人数（にんずう）から 自動（じどう）で 計算（けいさん）します':'Calculated automatically from your household size'}"></div></div>
+    <div class="field" id="m-exp-row"${['water','food','medical','child'].includes(curCat)?'':' style="display:none"'}><label>${L.fExp}</label><input id="m-exp" type="date" value="${esc(it.expiryDate||'')}"></div>
+    <div class="field"><label>${L.fBuyStore}</label><input id="m-buystore" value="${esc(it.store||'')}"></div>
+    <div class="field"><label>${L.fStoredBtns}</label><div class="loc-chips" id="m-locs">${locs.map(loc=>`<button type="button" class="loc-chip ${state.modal.storage===loc?'on':''}" onclick="App.pickStorage('${esc(jsq(loc))}')">${esc(loc)}</button>`).join('')}<button type="button" class="loc-chip" onclick="App.addStorage()">＋</button></div></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="App.saveItem()">${L.save}</button>
+      <button class="btn btn-ghost" onclick="App.closeModal()">${L.cancel}</button>
+      ${isEdit?`<button class="btn btn-ghost" style="color:#9B6470" onclick="App.delItem()">${L.del}</button>`:''}
+    </div>`;
+  document.getElementById('modal-ov').classList.add('show');
+  applyRuby(document.getElementById('modal'));
+  if(opts.matchRule)renderMatchBox();
+  else if((it.name_ja||it.name_en)&&catalog().length)App.matchName();
+  App.updateQtyUnit();
+}
+
+// ---- EMERGENCY ----
+function openEmergency(){
+  const L=t();const r=C.buildEmergencyCard({user:userLoc(),pack:packObj(),supplyItems:supplies(),lang:state.lang,now:NOW});
+  const g=(s)=>C.guardOutput(s,state.lang).text;
+  const carryList=(r.carry||[]).map(c=>{const nm=state.lang==='ja'?(c.name_ja||c.name_en||''):(c.name_en||c.name_ja||'');return c.location?`${esc(nm)}（${esc(locDisp(c.location))}）`:esc(nm);});
+  const kit=carryList.length
+    ? `<div class="kitgap"><span class="kl">${esc(L.emCarry)}</span>${carryList.join(state.lang==='ja'?'、':', ')}</div>`
+    : `<div class="kitgap" style="color:var(--ink-soft)">${esc(L.emNoCarry)}</div>`;
+  document.getElementById('emergency').innerHTML=`
+    <div class="emergency-head"><div class="t">⚠ ${L.emergency.toUpperCase()}</div>
+      <div class="emer-head-right">
+        <div class="emer-lang"><button class="${state.lang==='en'?'on':''}" onclick="App.emerLang('en')">EN</button><button class="${state.lang==='ja'?'on':''}" onclick="App.emerLang('ja')">やさしい</button></div>
+        <button onclick="App.closeEmergency()">${L.close}</button>
+      </div></div>
+    <div class="emergency-body"><div class="off-chip">● ${state.aiUnavailDemo?L.emChipSaved:L.emChipNormal}</div>
+      <div class="emer-card"><div class="lead">${L.emerLead}</div>
+        <div class="point">${facNm(r.supportPoint)}</div>
+        ${facEn(r.supportPoint)?`<div class="point-en">${esc(facEn(r.supportPoint))}</div>`:''}${genNote(isGenEn(r.supportPoint))}
+        <div class="dist">${esc(C.formatDistance(r.distance_m,state.lang))}</div>
+        ${kit}
+        <div class="action">${esc(g(r.card.action))}</div>
+        <div class="why"><b>${L.why}:</b> ${esc(g(r.card.why))}</div>
+        <div class="caution"><span class="cl">${L.caution}</span>${esc(g(r.card.caution))}</div>
+      </div></div>`;
+  document.getElementById('emergency').classList.add('show');
+  applyRuby(document.getElementById('emergency'));
+}
+
+// ---- render shell ----
+// ---- 防災御神籤 / Ready-Kuji (deterministic fortune poem; Gemini humanization is a later layer) ----
+const KUJI_TIER={
+  daidaikichi:{ja:'大大吉',ruby:'大大吉（だいだいきち）',en:'Great Great Blessing'},
+  daikichi:{ja:'大吉',ruby:'大吉（だいきち）',en:'Great Blessing'},
+  chukichi:{ja:'中吉',ruby:'中吉（ちゅうきち）',en:'Middle Blessing'},
+  shoukichi:{ja:'小吉',ruby:'小吉（しょうきち）',en:'Small Blessing'},
+  kichi:{ja:'吉',ruby:'吉（きち）',en:'Blessing'},
+};
+// Draw = % readiness -> tier (deterministic) -> randomly pick 1 slip from that tier (poem + earthquake tip).
+// Poem variation = rotating among multiple slips in the same tier. Gemini humanization later takes over the "poem layer" (see _GEMINI_HANDOFF_kuji.md); the earthquake tip is always grounded and never handed to Gemini.
+// content = unified format (both static fallback and AI generation map to this): {poem_ja,poem_en,tip_ja,tip_en,no,source}
+function renderKujiPoem(k,c){
+  const L=t();const ja=state.lang==='ja';const TK=KUJI_TIER[k.tier.key]||KUJI_TIER.kichi;
+  const poem=c?(ja?c.poem_ja:c.poem_en):'';
+  const tip=c?(ja?c.tip_ja:c.tip_en):'';
+  const titleStr=c?(ja?(c.title_ja||''):(c.title_en||'')):'';  // Short heading (<=5 chars) replaces the number display; the number stays in the data
+  // Secret marks (a QA tell; users just see decoration and cannot decode the implementation detail): 🔮=AI, 📜=deterministic.
+  // Note: ✨/🍀 were avoided because they are the 大吉/中吉 tier emoji and would be confusing -> use 🔮/📜, which do not collide with any tier. To change, edit these two characters below.
+  const deco=(c&&c.source==='ai')?'🔮':'📜';
+  const titleDeco=titleStr?` · ${deco}${esc(titleStr)}${deco}`:'';
+  return `<div class="kuji-slip">
+    <div class="kuji-top">${esc(L.kuji.title)}${titleDeco}</div>
+    <div class="kuji-tier"><span class="em">${k.tier.emoji}</span> ${esc(ja?TK.ruby:TK.ja)}</div>
+    <div class="kuji-tier-en">${esc(TK.en)}</div>
+    <div class="kuji-pct">${esc(L.kuji.readiness)} ${k.percent}%</div>
+    ${poem?`<div class="kuji-poem">${esc(poem)}</div>`:''}
+    ${tip?`<div class="kuji-f"><div class="kuji-fl">🛟 ${esc(L.kuji.f_tip)}</div><div class="kuji-ft">${esc(tip)}</div></div>`:''}
+    <div class="kuji-note">${esc(L.kuji.note)}</div>
+    <div class="kuji-acts">
+      <button class="kuji-close" onclick="App.closeKuji()">${esc(L.kuji.close)}</button>
+      <button class="kuji-again" onclick="App.openKuji()">${esc(L.kuji.again)}</button>
+    </div>
+  </div>`;
+}
+function renderKujiLoading(k){
+  const L=t();const ja=state.lang==='ja';const TK=KUJI_TIER[k.tier.key]||KUJI_TIER.kichi;
+  return `<div class="kuji-slip">
+    <div class="kuji-top">${esc(L.kuji.title)}</div>
+    <div class="kuji-tier"><span class="em">${k.tier.emoji}</span> ${esc(ja?TK.ruby:TK.ja)}</div>
+    <div class="kuji-tier-en">${esc(TK.en)}</div>
+    <div class="kuji-pct">${esc(L.kuji.readiness)} ${k.percent}%</div>
+    <div class="kuji-loading">
+      <div class="kuji-omi"><span class="kuji-spark s1">✨</span><span class="kuji-spark s2">✨</span><span class="kuji-spark s3">✨</span><span class="box"></span><span class="stick"></span><span class="lid"></span><span class="band">御</span></div>
+      <div class="kuji-load-txt">${esc(L.kuji.generating)}</div>
+    </div>
+  </div>`;
+}
+const _kujiStatic=(fb)=>fb?{title_ja:(fb.title&&fb.title.ja)||'',title_en:(fb.title&&fb.title.en)||'',poem_ja:fb.poem.ja,poem_en:fb.poem.en,tip_ja:fb.quake_tip.ja,tip_en:fb.quake_tip.en,no:fb.no,source:'fallback'}:null;
+let _qaTierIdx=0;
+async function openKuji(){
+  const k=C.drawReadyKuji(supplies(),NOW);
+  const cov=C.computeCoverage(supplies(),catalog(),family(),NOW);
+  k.percent=cov.percent; k.tier=C.readyKujiTier(cov.percent);
+  // QA only: ?qa=1 -> each draw cycles through the 5 tiers (real data always yields 54% 中吉, so QA cannot reach other states otherwise). Users will not add ?qa=1, so production is unaffected.
+  if(((typeof location!=='undefined'&&location.search)||'').indexOf('qa=1')>-1){
+    const T=[['daidaikichi','🌟',95],['daikichi','✨',78],['chukichi','🍀',58],['shoukichi','🌱',40],['kichi','🌤',15]];
+    const q=T[(_qaTierIdx++)%T.length]; k.tier={key:q[0],emoji:q[1],min:0}; k.percent=q[2];
+  }
+  const pool=kujiPool().filter(e=>e.luck===k.tier.key);
+  const fb=pool.length?pool[Math.floor(Math.random()*pool.length)]:(kujiPool()[0]||null);
+  const fbContent=_kujiStatic(fb);
+  const el=document.getElementById('kuji');
+  // AI-unavailable demo / offline / AI off -> go straight to the 20-slip deterministic fallback (synchronous, no network)
+  if(state.aiUnavailDemo || !(state.aiEnabled && navigator.onLine)){
+    el.innerHTML=renderKujiPoem(k,fbContent);applyRuby(el);el.classList.add('show');return;
+  }
+  // AI path: show loading first, then generate the fused result; on failure/timeout/use_fallback -> fall back to the 20 slips
+  el.innerHTML=renderKujiLoading(k);el.classList.add('show');applyRuby(el);
+  let content=fbContent;
+  try{
+    const r=await Promise.race([
+      api('/api/generate-kuji','POST',{tier:k.tier.key,tier_label:(KUJI_TIER[k.tier.key]||{}).ja}),  // privacy: only sends the coarse tier, not full gaps/percent
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),18000))  // Safety cap; with thinking off it usually returns in ~3s, and the animation covers slower cases
+    ]);
+    const d=r&&r.data;
+    if(d&&!d.use_fallback&&d.poem_ja){content={title_ja:d.title_ja||'',title_en:d.title_en||'',poem_ja:d.poem_ja,poem_en:d.poem_en,tip_ja:d.tip_ja,tip_en:d.tip_en,no:null,source:'ai'};}
+  }catch(e){/* Any error -> use the fallback */}
+  el.innerHTML=renderKujiPoem(k,content);applyRuby(el);
+}
+
+// ---- GUIDE / ガイド (feature explanations + 防災 keywords + honest framing) ----
+function renderGuide(){
+  const ja=state.lang==='ja';const P=(j,e)=>ja?j:e;
+  const sec=(j,e)=>`<div class="sec-h">${P(j,e)}</div>`;
+  const def=(term,desc)=>`<div class="g-item"><div class="g-term">${term}</div><div class="g-desc">${desc}</div></div>`;
+  let h=`<div class="sec-h page-h">${P('ガイド','Guide')}</div><div class="g-intro">${P('Digital Omamori の 使（つか）い方（かた）と、防災（ぼうさい）で よく 見（み）る 言葉（ことば）を 説明（せつめい）します。','A quick guide to using Digital Omamori and understanding common disaster-preparedness terms in Japan.')}</div>`;
+  h+=sec('使（つか）い方（かた）','How to use');
+  h+=[
+    ['備（そな）え チェック / Ready Check',P('家族（かぞく）の 人数（にんずう）に 合（あ）わせて、水（みず）・食（た）べもの・トイレなどの 備（そな）えの 目安（めやす）を 確認（かくにん）します。足（た）りない ものが あれば、ここから 追加（ついか）できます。','Check household preparedness targets for water, food, toilets, and other supplies based on your household size. Add missing items directly from each gap.')],
+    ['防災（ぼうさい）セット / My Emergency Kit',P('持（も）っている 防災用品（ぼうさいようひん）を 登録（とうろく）します。しまう 場所（ばしょ）、数（かず）、期限（きげん）を 確認（かくにん）できます。','Register the emergency supplies you already have. Track quantity, storage place, and expiry dates.')],
+    ['周辺（しゅうへん）ビュー / Nearby View',P('選（えら）んだ 場所（ばしょ）の 近（ちか）くに ある 避難所（ひなんじょ）・AED・給水所（きゅうすいじょ）・海抜（かいばつ）を 確認（かくにん）します。保存済（ほぞんず）みの 地域（ちいき）データを 使（つか）います。','Check nearby shelters, AEDs, water points, and elevation for a place you care about. It uses saved local data.')],
+    ['レンズ / Lens',P('日本語（にほんご）の サインや お知（し）らせを 撮（と）ると、内容（ないよう）を わかりやすく 整理（せいり）し、次（つぎ）に できる 行動（こうどう）を 表示（ひょうじ）します。レンズには ネットが 必要（ひつよう）です。','Take a photo of Japanese signs or notices. Digital Omamori organizes the information and turns it into next actions. Lens requires a connection.')],
+    ['緊急（きんきゅう） / Emergency',P('「緊急（きんきゅう）」ボタンを 押（お）すと、保存済（ほぞんず）みの 地域（ちいき）データを 使（つか）って、近（ちか）くの 支援点（しえんてん）と 次（つぎ）に できる ことを 表示（ひょうじ）します。','Tap the Emergency button to see nearby support points and what to do now, using saved local data.')],
+  ].map(([t,d])=>def(t,d)).join('');
+  // ＊legend (AED English-name ingest: generated names carry ＊ = app translation, not impersonating official)
+  h+=def(P('＊の ついた 英語名（えいごめい）','Names marked ＊'),P('＊が ついた 英語（えいご）の 名前（なまえ）は、この アプリの 翻訳（ほんやく）です。役所（やくしょ）の 正式（せいしき）な 英語名では ありません。','English names marked ＊ are translated by this app. They are not official English names.'));
+  h+=sec('防災（ぼうさい）の 言葉（ことば）','Disaster terms');
+  h+=[
+    ['海抜（かいばつ） / Elevation',P('海面（かいめん）からの 高（たか）さです。Digital Omamori は、事実（じじつ）だけを 見（み）せます。安全（あんぜん）・危険（きけん）の 判断（はんだん）は しません。','Height above sea level. Digital Omamori shows this as factual local context. It does not judge whether a place is safe or dangerous.')],
+    ['避難所（ひなんじょ） / Evacuation shelter',P('災害（さいがい）で 家（いえ）に 住（す）めない 時（とき）に 利用（りよう）する 場所（ばしょ）です。地域（ちいき）や 状況（じょうきょう）によって、使（つか）える 人（ひと）が 変（か）わる ことが あります。開（あ）いて いるかは 変（か）わる ことが あります。','A place for people who cannot stay at home after a disaster. Availability and eligibility may depend on the local situation.')],
+    ['一時滞在施設（いちじたいざいしせつ） / Temporary stay facility',P('電車（でんしゃ）が 止（と）まる などして 家（いえ）に 帰（かえ）れない 時（とき）、一時的（いちじてき）に 休（やす）む ための 施設（しせつ）です。避難所（ひなんじょ）とは 別（べつ）の ものです。','A place to rest temporarily when public transport stops and people cannot return home. It is different from an evacuation shelter.')],
+    ['帰宅支援（きたくしえん）ステーション / Return support station',P('歩（ある）いて 帰（かえ）る 人（ひと）を 支援（しえん）する 場所（ばしょ）です。水（みず）・トイレ・道（みち）の 情報（じょうほう）を もらえる ことが あります。コンビニなどの ステッカーで 見（み）つかる 場合（ばあい）が あります。','A support point for people walking home. It may provide water, toilets, or road information. These are often marked by stickers at places like convenience stores.')],
+    ['給水所（きゅうすいじょ） / Water station',P('断水（だんすい）した 時（とき）に、水（みず）を 受（う）け取（と）る ための 場所（ばしょ）です。水（みず）を 入（い）れる 容器（ようき）が 必要（ひつよう）に なる ことが あります。','A place where people can receive water when tap water is unavailable. You may need to bring a water container.')],
+    ['支援点（しえんてん） / Support point',P('助（たす）けて もらえる 場所（ばしょ）です。','A place where you can get help.')],
+    ['容器（ようき） / Container',P('水（みず）を 入（い）れる ものです。','Something to put water in.')],
+  ].map(([t,d])=>def(t,d)).join('');
+  h+=sec('Digital Omamori の 考（かんが）え方（かた）','Our approach');
+  h+=[
+    [P('公開（こうかい）データと 生活（せいかつ）の 備（そな）えを 分（わ）けて います','We separate public local data from household preparedness'),P('避難所（ひなんじょ）・給水所（きゅうすいじょ）・AED・海抜（かいばつ）などは、地域（ちいき）の 公開（こうかい）データを もとに 表示（ひょうじ）します。備（そな）えの 目安（めやす）には、国（くに）や 東京都（とうきょうと）の ガイドと、みんなが よく する 備（そな）えを 使（つか）います。','Shelters, water points, AEDs, and elevation come from local public data. Preparedness targets are based on public guidance and common household preparedness practices.')],
+    [P('あなたの データは この スマートフォンの 中（なか）に 残（のこ）ります','Your private readiness data stays on this device'),P('避難所（ひなんじょ）などの 公開（こうかい）データは クラウドから 届（とど）けられます。家族（かぞく）の 情報（じょうほう）・よく 行（い）く 場所（ばしょ）・防災（ぼうさい）用品（ようひん）・備（そな）えの 状態（じょうたい）は、この ブラウザの 中（なか）に 残（のこ）り、私（わたし）たちの サーバーには 送（おく）りません。これからの 予定（よてい）：自分（じぶん）で データを コピーして 残（のこ）せる ように します。あなたが OK した ときだけ、安全（あんぜん）な 方法（ほうほう）で クラウドにも 残（のこ）せる ように します。','Public safety data can be served from the cloud. Your household profile, saved places, inventory, and readiness stay in this browser and are not sent to our backend. Future release: user-controlled export/import backup, followed by optional encrypted cloud sync with explicit consent.')],
+    [P('AI は 決（き）めません','AI does not make the final safety decision'),P('Digital Omamori は、見（み）えた 情報（じょうほう）を 整理（せいり）し、できる ことを ならべて 見（み）せます。「安全（あんぜん）」「危険（きけん）」は 決（き）めません。避難（ひなん）ルートは 案内（あんない）しません。','Digital Omamori helps organize information and show options. It does not declare a place safe or dangerous, and it does not provide detailed evacuation routing.')],
+    [P('AI が 使（つか）えない 時（とき）も、地域（ちいき）データを 使（つか）います','When AI is unavailable, saved local data still works'),P('レンズには ネットが 必要（ひつよう）です。AI や ネットが 使（つか）えない 時（とき）は、緊急（きんきゅう）モードで、保存済（ほぞんず）みの 地域（ちいき）データと 次（つぎ）に できる ことを 確認（かくにん）できます。','Lens requires connectivity. If AI or the network is unavailable after the app has loaded, Emergency Mode shows saved local data and what to do now.')],
+    [P('出典（しゅってん）を 大切（たいせつ）に します','Sources are shown clearly'),P('どの 情報（じょうほう）が どこから 来（き）たかを わかる ように し、必要（ひつよう）な 時（とき）は 公式（こうしき）サイトを 確認（かくにん）できる ように します。','Digital Omamori aims to show where data comes from and point users back to official sources when live status matters.')],
+    [P('AI が 作（つく）る もの','What AI makes'),P('レンズと おみくじは、AI が 作（つく）った 内容（ないよう）です。ほかの 画面（がめん）は、保存済（ほぞんず）みの データを そのまま 見（み）せます。','Lens and Omikuji show content written by AI. Everything else shows saved data as it is.')],
+    [P('色（いろ）の 意味（いみ）','What the colors mean'),P('赤（あか）は、命（いのち）を 守（まも）る ための 色（いろ）です。緊急（きんきゅう）モードだけに 使（つか）います。和紙（わし）の 金色（きんいろ）は、AI が 作（つく）る 内容（ないよう）です。ネットが 必要（ひつよう）です。むらさきは、保存済（ほぞんず）みの データです。ネットが なくても 使（つか）えます。色（いろ）が 見（み）えなくても 大丈夫（だいじょうぶ）です。ボタンや カードには、みんな 名前（なまえ）が あります。','Red is only for Emergency — the life-protecting function. Warm gold marks AI content (Lens and Omikuji) — it needs a network. Purple marks saved data — it works without one. You never need color to use the app: every button and card also has a name.')],
+  ].map(([t,d])=>def(t,d)).join('');
+  h+=sec('オフラインモード','Offline mode');
+  h+=`<div class="lg-card"><div class="lg-desc">${P('AI や ネットが 使（つか）いにくい 場面（ばめん）の Digital Omamori を 試（ため）せます。緊急（きんきゅう）カード・周辺（しゅうへん）ビュー・備（そな）えチェック・防災（ぼうさい）セットは、保存済（ほぞんず）みの データで 動（うご）きます。','Try how Digital Omamori works when AI or network access is limited. Emergency cards, Nearby View, Ready Check, and your kit still work with saved local data.')}</div><div style="margin-top:9px;font-size:12.5px;color:var(--ink-soft)">${P('画面上（がめんうえ）の バーの「オフラインモード」から いつでも 切（き）り替（か）えられます。','Use “Offline mode” in the top bar to switch it on or off anytime.')}</div></div>`;
+  return h;
+}
+// Lens moved to the front = mobile camera-first nudge; the default landing is still recommend (opening the app touches no camera permission, Lens only opens the camera on button press)
+function renderTabs(){const L=t();document.getElementById('tabs').innerHTML=['lens','check','recommend','kit','pack','profile','guide'].map(k=>`<button class="${k==='lens'?'t-lens ':''}${state.tab===k?'on':''}" onclick="App.go('${k}')">${esc(L.tabs[k])}</button>`).join('');applyRuby(document.getElementById('tabs'));renderBottomNav();}
+const BNAV_MAIN=['lens','check','recommend','pack'];const BNAV_MORE=['kit','profile','guide'];/* 周辺ビュー goes in the bottom bar (on-the-move scenario), 防災セット goes in More (at-home management) */
+function renderBottomNav(){const L=t();const bn=document.getElementById('bnav');if(!bn)return;
+  const lbl=(k)=>(k==='pack'&&state.lang!=='ja')?'Nearby':L.tabs[k];/* Abbreviated EN bnav label (1 of 5 slots); kit is in More so it keeps its full name */
+  bn.innerHTML=BNAV_MAIN.map(k=>`<button class="${k==='lens'?'bl-lens ':''}${state.tab===k?'on':''}" onclick="App.go('${k}')">${esc(lbl(k))}</button>`).join('')
+    +`<button class="${BNAV_MORE.includes(state.tab)?'on':''}" onclick="App.moreToggle()">${state.lang==='ja'?'その他（た）':'More'}</button>`;
+  applyRuby(bn);
+  const mp=document.getElementById('bnav-more');if(mp){mp.innerHTML=BNAV_MORE.map(k=>`<button class="${state.tab===k?'on':''}" onclick="App.go('${k}')">${esc(L.tabs[k])}</button>`).join('');applyRuby(mp);}}
+function renderMain(){const ja=state.lang==='ja';const render=({kit:renderKit,recommend:renderRecommend,pack:renderPack,check:renderCheck,profile:renderProfile,guide:renderGuide,lens:renderLens}[state.tab])||renderKit;const banner=state.aiUnavailDemo?`<div class="ai-demo-banner"><b>${ja?'🛟 オフラインモードが ONです。':'🛟 Offline mode is ON.'}</b> ${ja?'AI や ネットが 使（つか）えない ときの 体験（たいけん）です。レンズと AI 機能（きのう）は 少（すこ）しの あいだ 止（と）まります。緊急（きんきゅう）カード・周辺（しゅうへん）ビュー・備（そな）えチェック・防災（ぼうさい）セットは、保存済（ほぞんず）みの データで 確認（かくにん）できます。':'This demo simulates limited AI or network access. Lens and AI features are paused, while Emergency cards, Nearby View, Ready Check, and your kit continue using saved local data.'}</div>`:(!state.online?`<div class="offline-banner"><b>${ja?'🔌 オフラインの ようです。':'🔌 You appear to be offline.'}</b> ${ja?'保存済（ほぞんず）みの データは、アプリを 開（ひら）いた 後（あと）も 確認（かくにん）できます。':'Saved local data remains available after the app has loaded.'}</div>`:'');document.getElementById('wrap').innerHTML=banner+render();applyRuby(document.getElementById('wrap'));}
+function renderChrome(){const L=t();
+  const tl=document.getElementById('tagline');tl.innerHTML=esc(L.tagline)+' · '+APP_VERSION;applyRuby(tl);
+  const eb=document.getElementById('emer-btn-l');eb.innerHTML=esc(L.emergency);applyRuby(eb);
+  const lp=document.getElementById('lg-pill-l');if(lp){lp.innerHTML=esc(state.aiUnavailDemo?L.lgExit:L.lgTry);applyRuby(lp);}
+  const lpb=document.getElementById('lg-pill');if(lpb)lpb.classList.toggle('on',state.aiUnavailDemo);
+  // Status pill (honest labeling):
+  //   saved-data mode ON  -> "Offline · simulated" -- keeps the vision of letting reviewers experience a disconnected UI, but the UI admits it is simulated (does not pretend to be truly offline).
+  //   saved-data mode OFF -> shows the real browser connection (state.online, from navigator.onLine + events).
+  const simOn=state.aiUnavailDemo;
+  const cpl=document.getElementById('demo-status-pill-l');if(cpl){cpl.innerHTML=esc(simOn?L.connSimOffline:(state.online?L.connOnline:L.connOffline));applyRuby(cpl);}
+  const cpb=document.getElementById('demo-status-pill');if(cpb)cpb.classList.toggle('off',simOn||!state.online);
+  document.getElementById('lang-en').classList.toggle('on',state.lang==='en');document.getElementById('lang-ja').classList.toggle('on',state.lang==='ja');
+  document.documentElement.lang=state.lang==='ja'?'ja':'en';}
+function renderAll(){renderChrome();renderTabs();renderMain();}
+
+// ---- Lens (防災カメラ): capture/upload a disaster notice -> Gemini multimodal -> native-language summary + やさしい action ----
+let _lensStream=null;
+function renderLens(){
+  const ja=state.lang==='ja';
+  const introTitle=ja?'まわりの サインや お知（し）らせを レンズで 読（よ）む':'Read signs and notices with Lens';
+  const intro=ja?'日本語（にほんご）の サイン・お知（し）らせ・ラベルを 撮（と）るか、写真（しゃしん）を アップロードして ください。内容（ないよう）を まとめて、次（つぎ）に できる ことを 出（だ）します。防災（ぼうさい）サインも、区（く）の お知（し）らせも 読（よ）めます。':'Take or upload a photo of any Japanese sign, notice, or label — disaster signs, ward announcements, product labels. Digital Omamori summarizes it and suggests your next action.';
+  if(state.aiUnavailDemo){
+    // Local guidance mode: Lens needs AI + connectivity -> show a "paused" state (a mode, not an error), handing off to Emergency / the local layer.
+    return `<div class="lens-wrap"><div class="lens-title">${introTitle}</div>
+    <div class="lens-paused">${ja?'オフラインモードの あいだは、レンズは 止（と）まって います。レンズには AI と ネットが 必要（ひつよう）です。保存済（ほぞんず）みの データで、緊急（きんきゅう）モード・周辺（しゅうへん）ビュー・備（そな）えチェック・防災（ぼうさい）セットは 使（つか）えます。':'Lens is paused while offline mode is on. Lens needs AI and network access. You can still use Emergency Mode, Nearby View, Ready Check, and your kit with saved local data.'}<button class="lens-fail-emer" style="margin-top:12px" onclick="App.openEmergency()">${ja?'⚠ 緊急（きんきゅう）モードを 開（ひら）く':'⚠ Open Emergency Mode'}</button></div></div>`;
+  }
+  return `<div class="lens-wrap">
+    <div class="lens-title">${introTitle}</div>
+    <div class="lens-intro">${intro}</div>
+    <div class="lens-stage">
+      <video id="lens-video" playsinline muted></video>
+      <img id="lens-preview" alt="">
+      <div class="lens-ph" id="lens-ph">📷</div>
+      <div class="lens-frame"><span class="lc tl"></span><span class="lc tr"></span><span class="lc bl"></span><span class="lc br"></span></div>
+      <input type="range" id="lens-zoom" class="lens-zoom" aria-label="Zoom">
+      <button class="lens-shutter" onclick="App.lensShoot()">${ja?'読（よ）み取（と）る':'Scan'}</button>
+    </div>
+    <div class="lens-acts">
+      <button class="lens-btn cam" id="lens-cam" onclick="App.lensCam()">${ja?'📷 カメラを 開（ひら）く':'📷 Open camera'}</button>
+      <button class="lens-btn shoot" id="lens-shoot" style="display:none" onclick="App.lensShoot()">${ja?'読（よ）み取（と）る':'Scan'}</button>
+      <label class="lens-btn up">${ja?'🖼️ 写真（しゃしん）を アップロード':'🖼️ Upload photo'}<input type="file" accept="image/png,image/jpeg" onchange="App.lensFile(this)" hidden></label>
+    </div>
+    <div class="lens-result" id="lens-result"></div>
+  </div>`;
+}
+// Backbone: below the Lens result, attach deterministic local hard data. In a disaster context -> give only actionable info, no fortune draw, no readiness %.
+function lensLocalData(){
+  const ja=state.lang==='ja';const me=userLoc();const all=facilities();
+  if(!all.length) return '';
+  const nearestOf=(ty)=>C.nearestFacilities(me,all.filter(f=>f.type===ty))[0]||null;
+  const sh=nearestOf('shelter');const wp=nearestOf('water_point');
+  const dlNear=demoLocs().filter(d=>typeof d.elevation_m==='number').map(d=>({d,dist:Math.hypot((d.lat||0)-me.lat,(d.lng||0)-me.lng)})).sort((a,b)=>a.dist-b.dist)[0];
+  const yourElev=dlNear?dlNear.d.elevation_m:null;
+  const facRow=(p,ic,lbl)=>p?`<div class="lens-loc-row"><span class="lens-loc-ic">${ic}</span><span class="lens-loc-nm">${esc(lbl)}<span class="lens-loc-fac">${facNm(p.facility)}${facEn(p.facility)?` <span class="lens-loc-en">(${esc(facEn(p.facility))})</span>`:''}</span></span><span class="lens-loc-d">${esc(C.formatDistance(p.distance_m,state.lang))} · ${esc(C.compass8(C.bearingDeg(me,p.facility),state.lang))}</span></div>`:'';
+  let rows='';
+  rows+=facRow(sh,'🏢',ja?'一番（いちばん）近（ちか）い 避難所（ひなんじょ）・にげて 休（やす）める ところ':'Nearest shelter');
+  rows+=facRow(wp,'💧',ja?'一番（いちばん）近（ちか）い 給水所（きゅうすいじょ）・水（みず）を もらえる ところ':'Nearest water');
+  if(yourElev!=null) rows+=`<div class="lens-loc-row"><span class="lens-loc-ic">📏</span><span class="lens-loc-nm">${ja?'今（いま）いる 場所（ばしょ）の 海抜（かいばつ）':'Your elevation'}</span><span class="lens-loc-d">${yourElev} m</span></div>`;
+  if(!rows) return '';
+  rows+=genNote(isGenEn(sh&&sh.facility)||isGenEn(wp&&wp.facility));
+  return `<div class="lens-local"><div class="lens-local-h">${ja?'📍 近（ちか）くの 支援点（しえんてん）':'📍 Support points near you'}</div>${rows}<div class="lens-local-note">${ja?'海抜（かいばつ）は 国土地理院（こくどちりいん）の データです。くわしくは ガイドを 見（み）て ください。':'Elevation data from GSI (T.P.). See Guide.'}</div></div>`;
+}
+// Backbone extension: when Lens identifies a 給水所/water context -> pull "water-related" items from stock as a bring reminder.
+// 🔴 Boundary (no harm): only list "related items you already own" (name + quantity + storage location); ❌ do not judge sufficiency, ❌ do not show readiness %, ❌ do not compute how many to bring.
+// A 給水所 is where you go to "fill up water" -> bring an "empty container" to fill, not the bottled drinking water you already have at home.
+// So the match only takes "containers" (water_storage / foldable water bag types), ❌ excluding drinking water (rule=water).
+const LENS_KIT_CONTEXT=[
+  {test:/給水|飲料水|ポリタンク|water\s*(station|supply|point|distribution|tank)|drinking\s*water/i,
+   match:(it)=>it.matched_rule_id==='water_storage'||/foldable|water\s*bag|water\s*carrier|jerry\s*can|ポリタンク|ウォーター?バッグ|給水袋|折(り)?たたみ/i.test((it.name_en||'')+' '+(it.name_ja||'')),
+   h_en:'🎒 Bring an empty container to fill',
+   h_ja:'🎒 給水所（きゅうすいじょ）へ 持（も）っていく 空（から）の 容器（ようき）'}
+];
+function lensBringFromKit(d){
+  if(!d||d.use_fallback) return '';
+  const ja=state.lang==='ja';
+  const hay=[d.raw_ja,d.brain_ja,d.brain_en,d.action_ja,d.action_en].filter(Boolean).join(' ');
+  const ctx=LENS_KIT_CONTEXT.find(c=>c.test.test(hay));
+  if(!ctx) return '';
+  const items=supplies().filter(ctx.match);
+  if(!items.length) return '';
+  const rows=items.map(it=>{
+    const nm=ja?(it.name_ja||it.name_en||''):(it.name_en||it.name_ja||'');
+    const qty=(it.quantity!=null)?(ja?`${it.quantity}個（こ）`:`${it.quantity} ${it.quantity===1?'item':'items'}`):'';
+    const loc=it.storageLocation?esc(locDisp(it.storageLocation)):(ja?'場所（ばしょ）未設定（みせってい）':'Location not set');
+    const meta=[esc(qty),loc].filter(Boolean).join(' · ');
+    return `<div class="lens-kit-row"><span class="lens-kit-ic">📦</span><span class="lens-kit-nm">${esc(nm)}</span><span class="lens-kit-d">${meta}</span></div>`;
+  }).join('');
+  return `<div class="lens-kit"><div class="lens-kit-h">${ja?ctx.h_ja:ctx.h_en}</div>${rows}<div class="lens-kit-note">${ja?'安全（あんぜん）に 持（も）ち出（だ）せる ときだけ。数（かず）が 足（た）りるかは 判断（はんだん）しません。':'Bring only if it is safe and practical.'}</div></div>`;
+}
+function renderLensResult(d){
+  const ja=state.lang==='ja';
+  if(!d||d.use_fallback){
+    // Split failure reasons. Online but the AI could not read it (large image 413 / safety block / incomplete fields) != offline, so no longer falsely claim "ネットが 必要".
+    if(d&&d._reason==='ai'){
+      const m2=ja?'この 写真（しゃしん）は 読（よ）めませんでした。文字（もじ）が はっきり 見（み）える ように、もう一度（いちど） 試（ため）して ください。':'Lens could not read this photo. Please try again with the text clear and well-lit.';
+      return `<div class="lens-fail">${m2}</div>`;
+    }
+    // On a real offline / offline demo, do not dead-end; hand off gracefully to the offline layer (Emergency). Lens = online comprehension layer; Emergency/Local Pack = offline survival layer.
+    const msg=ja
+      ? 'レンズは、案内（あんない）や ラベルを 読（よ）むために ネットが 必要（ひつよう）です。ネットが なくても、緊急（きんきゅう）モードで、保存済（ほぞんず）みの 支援点（しえんてん）と 次（つぎ）に できる ことが 見（み）られます。'
+      : 'Lens needs a connection to read signs and labels. Even without a network, Emergency Mode shows saved support points and what to do now.';
+    const btn=ja?'⚠ 緊急（きんきゅう）モードを 開（ひら）く':'⚠ Open Emergency Mode';
+    return `<div class="lens-fail">${msg}<button class="lens-fail-emer" onclick="App.openEmergency()">${btn}</button></div>`;
+  }
+  const brain=ja?(d.brain_ja||d.brain_en||''):(d.brain_en||d.brain_ja||'');
+  const actionJa=d.action_ja||'';const actionEn=d.action_en||'';
+  return `
+    <div class="lens-raw"><div class="lens-rl">📷 ${ja?'読（よ）み取（と）った 文字（もじ）':'Scanned (original)'}</div><div class="lens-rt">${esc(d.raw_ja||'')}</div></div>
+    <div class="lens-card brain"><div class="lens-cl">🧠 For My Brain</div><div class="lens-cc">${esc(brain)}</div></div>
+    <div class="lens-card action"><div class="lens-cl">🤝 For My Action — やさしい日本語</div><div class="lens-cc big">${esc(actionJa)}</div>${(!ja&&actionEn)?`<div class="lens-cc-en">${esc(actionEn)}</div>`:''}</div>
+    ${lensLocalData()}
+    ${lensBringFromKit(d)}
+    <div class="lens-honest">${ja?'AI が 読（よ）んで、やさしく まとめて います。大事（だいじ）な ことは、港区（みなとく）や 役所（やくしょ）の お知（し）らせも 見（み）て ください。':'Summarized by AI. For anything important, please also check the official notice.'}</div>`;
+}
+
+const App={
+  setLang(l){state.lang=l;renderAll();},
+  toggleAiDemo(){state.aiUnavailDemo=!state.aiUnavailDemo;renderAll();toast(state.aiUnavailDemo?(state.lang==='ja'?'オフラインモード：ON':'Offline mode: ON'):(state.lang==='ja'?'オフラインモード：OFF':'Offline mode: OFF'));},
+  go(k){App.moreClose();if(state.tab==='lens'&&k!=='lens')this._lensStop();state.tab=k;renderMain();renderTabs();},
+  moreToggle(){const m=document.getElementById('bnav-more'),sc=document.getElementById('bnav-scrim');if(!m)return;const open=m.style.display==='block';m.style.display=open?'none':'block';sc.style.display=open?'none':'block';},
+  moreClose(){const m=document.getElementById('bnav-more'),sc=document.getElementById('bnav-scrim');if(m)m.style.display='none';if(sc)sc.style.display='none';},
+  profToggle(k,open){state.profOpen[k]=open;},  // Profile collapsible sections: remember open/closed so a re-render (e.g. a stepper press) does not snap them shut
+
+  kitQuery(v){state.kitFilter.query=v;renderMain();},
+  kitCat(c){state.kitFilter.category=c;renderMain();},
+  kitStatus(s){state.kitFilter.status=s;renderMain();},
+  packQuery(v){state.packFilter.query=v;renderMain();},
+  packType(ty){state.packFilter.type=ty;renderMain();},
+  openAdd(){openModal(null);},
+  openEdit(id){openModal(supplies().find(i=>i.item_id===id));},
+  closeModal(){document.getElementById('modal-ov').classList.remove('show');},
+  catChanged(){const c=document.getElementById('m-cat')?.value;const row=document.getElementById('m-exp-row');if(row)row.style.display=['water','food','medical','child','pet'].includes(c)?'':'none';App.matchName();},  // Changing category = layer 1 changed -> re-match within the category (pet added to the perishable set = フード has a 賞味期限)  // D1: only perishable categories (water/food/medicine/infant) show the 賞味期限
+  updateQtyUnit(){  // The quantity field shows the unit from the matched rule (water = L, ...); water additionally gets a "total L" hint
+    const cm=state.currentMatch;const rule=cm&&cm.matched_rule_id?catalog().find(r=>r.rule_id===cm.matched_rule_id):null;
+    const jaU=rule&&rule.target?rule.target.unit:'';const enU=EN_UNIT[jaU]||jaU;
+    const u=state.lang==='ja'?jaU:enU;const us=document.getElementById('m-qty-unit');if(us)us.textContent=u?`(${u})`:'';
+    const h=document.getElementById('m-qty-hint');if(h)h.textContent=(rule&&rule.rule_id==='water')?(state.lang==='ja'?'ぜんぶで なんリットル？ 例：2L × 6本 = 12':'Total litres, e.g. 2L × 6 bottles = 12'):'';
+  },
+  matchName(){
+    const cat=catalog();if(!cat.length)return;
+    const scan={name_ja:document.getElementById('m-ja')?.value||'',name_en:document.getElementById('m-en')?.value||''};
+    if(!scan.name_ja&&!scan.name_en){renderMatchBox();return;}  // Empty name -> leave the existing rule untouched (Q2: an empty name does not clear it)
+    // Two-layer mechanism: category = layer 1 (user responsible; その他 = free zone, not matched); keyword = layer 2 (ranked within the category)
+    const lock=document.getElementById('m-cat')?.value||null;
+    const res=C.matchScanToRule(scan,cat,{categoryLock:lock});
+    const cur=state.currentMatch;
+    const hadRule=!!(cur&&cur.matched_rule_id&&!cur.needs_manual_confirm);
+    const oldRule=hadRule?cat.find(r=>r.rule_id===cur.matched_rule_id):null;
+    const oldFits=!!(oldRule&&(!lock||oldRule.category===lock));  // Q2 retention only when "the old rule is compatible with the current category"; if the user changes category = explicit intent, the old rule yields
+    if(res.matched_rule_id&&!res.needs_manual_confirm){
+      state.currentMatch=res;  // New name strong-match -> update matched_rule_id (same rule or a different one)
+      const rule=cat.find(r=>r.rule_id===res.matched_rule_id);
+      // No-harm/UX: auto-classification only carries the suggested target, **it does not overwrite the user's manually chosen category**. As-needed items leave the 目安 blank.
+      if(rule){document.getElementById('m-tgt').value=rule.target&&rule.target.type==='per_household'?'':C.resolveTarget(rule,family()).value;}
+    }else if(!hadRule||!oldFits){
+      state.currentMatch=res;  // No rule before, or the old rule clashes with the user's chosen category -> accept the new result (-> extra / re-match within category)
+    }// else: has a rule + ambiguous new name + compatible category -> keep the old rule (Q2 principle: do not silently clear)
+    renderMatchBox();App.updateQtyUnit();
+  },
+  pickRule(rid){
+    const rule=catalog().find(r=>r.rule_id===rid);if(!rule)return;
+    state.currentMatch={matched_rule_id:rid,confidence:1,needs_manual_confirm:false,manual:true};
+    document.getElementById('m-cat').value=rule.category;
+    document.getElementById('m-tgt').value=C.resolveTarget(rule,family()).value;
+    renderMatchBox();
+  },
+  addFromRule(rid){
+    const rule=catalog().find(r=>r.rule_id===rid);if(!rule)return;
+    const tgt=rule.target&&rule.target.type==='per_household'?'':C.resolveTarget(rule,family()).value;  // As-needed items (no official amount): do not preset the 目安 to 1, leave it blank
+    openModal({name_ja:rule.name_ja,name_en:rule.name_en,category:rule.category,quantity:0,targetQuantity:tgt,expiryDate:'',storageLocation:''},{matchRule:rule});
+  },
+  pickStorage(loc){state.modal.storage=(state.modal.storage===loc)?'':loc;renderModalLocs();},
+  addStorage(){const n=(prompt(t().prof.addPlacePrompt)||'').trim();if(!n)return;const f=family();f.storageLocations=f.storageLocations||[];if(!f.storageLocations.includes(n))f.storageLocations.push(n);saveSupply();state.modal.storage=n;renderModalLocs();},
+  addStorageProfile(){const n=(prompt(t().prof.addPlacePrompt)||'').trim();if(!n)return;const f=family();f.storageLocations=f.storageLocations||[];if(!f.storageLocations.includes(n))f.storageLocations.push(n);saveSupply();renderMain();},
+  delStorage(loc){const f=family();f.storageLocations=(f.storageLocations||[]).filter(x=>x!==loc);saveSupply();renderMain();},
+  fam(k,d){const f=family();const min=(k==='targetDays')?1:0;f[k]=Math.max(min,(Number(f[k])||0)+d);saveSupply();renderMain();},
+  async saveAddress(v){const ud=state.data.userDoc;if(!ud)return;ud.user_profile=ud.user_profile||{};ud.user_profile.address=v;await lsSet(LS.user,ud);toast(t().prof.saved);},
+  togglePack(key){const ud=state.data.userDoc;if(!ud)return;ud.user_profile=ud.user_profile||{};const pc=ud.user_profile.pack_consent||{};pc[key]=!(pc[key]!==false);ud.user_profile.pack_consent=pc;lsSet(LS.user,ud);renderMain();},
+  packAll(on){const ud=state.data.userDoc;if(!ud)return;ud.user_profile=ud.user_profile||{};const pc={};PACKS.forEach(p=>pc[p.key]=!!on);ud.user_profile.pack_consent=pc;lsSet(LS.user,ud);renderMain();},
+  // Official pack update check (MVP: the pack is bundled locally and already current; a real cloud comparison would only happen when online. This just illustrates the UI flow.)
+  checkPackUpdates(){
+    const L=t();const btn=document.getElementById('p-pack-btn');const st=document.getElementById('p-pack-status');
+    if(!btn||!st)return;const orig=btn.textContent;
+    btn.disabled=true;btn.textContent=L.prof.packChecking;st.textContent='';
+    setTimeout(()=>{
+      btn.disabled=false;btn.textContent=orig;
+      st.innerHTML='✅ '+esc(L.prof.packUpToDate)+' · '+esc(L.prof.packCheckedNow);
+      applyRuby(st);toast(L.prof.packUpToDate);
+    },650);
+  },
+  async setDemoLocation(arg){
+    const q=(arg!==undefined?arg:(document.getElementById('p-address')?.value||'')).trim();
+    if(!q)return;const norm=q.toLowerCase();
+    const hit=demoLocs().find(d=>String(d.display_name).toLowerCase()===norm||(d.aliases||[]).some(a=>String(a).toLowerCase()===norm));
+    const ud=state.data.userDoc;if(!ud)return;ud.user_profile=ud.user_profile||{};ud.user_profile.address=q;
+    if(hit){ud.user_profile.coords={lat:hit.lat,lng:hit.lng};ud.user_profile.demo_location_name=hit.display_name;
+      await lsSet(LS.user,ud);renderMain();toast(t().prof.demoSet+'：'+hit.display_name);}
+    else{await lsSet(LS.user,ud);renderMain();toast(t().prof.demoNotFound);}
+  },
+  locate(){
+    if(!('geolocation' in navigator)){toast(t().prof.geoNo);return;}
+    toast(t().prof.geoWait);
+    navigator.geolocation.getCurrentPosition(async(pos)=>{
+      const ud=state.data.userDoc;if(!ud)return;ud.user_profile=ud.user_profile||{};
+      ud.user_profile.coords={lat:pos.coords.latitude,lng:pos.coords.longitude};
+      await lsSet(LS.user,ud);renderMain();toast(t().prof.geoOk);
+    },function(){toast(t().prof.geoFail);},{enableHighAccuracy:true,timeout:10000});
+  },
+  async uploadPhoto(inp,suffix){const file=inp.files&&inp.files[0];if(!file)return;
+    if(!/^image\/(png|jpeg)$/i.test(file.type||'')){toast(t().photoType);inp.value='';return;}  // Accept only jpg/png (block HEIC etc. up front; not sent to the server)
+    const reader=new FileReader();reader.onload=()=>{const b64=reader.result;if(suffix==='label')state.modal.photoLabel=b64;else state.modal.photo=b64;const box=document.getElementById(suffix==='label'?'m-pbox-label':'m-pbox-front');if(box){box.classList.add('has');box.innerHTML=`<input type="file" accept="image/png,image/jpeg" onchange="App.uploadPhoto(this,'${suffix}')"><img src="${b64}">`;}toast(t().photoPreviewNote);};reader.readAsDataURL(file);},  // privacy: local preview only, no POST, not persisted (saveItem does not write base64 into localStorage)
+  async saveItem(){
+    const g=(id)=>document.getElementById(id)?.value||'';
+    const cm=state.currentMatch||{};const id=state.modal.itemId;
+    const it={item_id:id,name_en:g('m-en'),name_ja:g('m-ja'),category:g('m-cat'),
+      quantity:Number(g('m-qty'))||0,targetQuantity:Number(g('m-tgt'))||0,expiryDate:g('m-exp')||null,
+      storageLocation:state.modal.storage||'',store:g('m-buystore'),
+      photo:(state.modal.photo&&!String(state.modal.photo).startsWith('data:'))?state.modal.photo:null,photoLabel:(state.modal.photoLabel&&!String(state.modal.photoLabel).startsWith('data:'))?state.modal.photoLabel:null,  // Privacy: freshly uploaded base64 is not persisted (session preview only); seed server paths are kept
+      matched_rule_id:(cm.matched_rule_id&&!cm.needs_manual_confirm)?cm.matched_rule_id:null,match_confidence:cm.confidence||0,needs_manual_confirm:false,
+      status:'',gap_reason_en:null,gap_reason_ja:null};
+    const arr=supplies();const idx=arr.findIndex(i=>i.item_id===id);
+    if(idx>=0)arr[idx]={...arr[idx],...it};else arr.push(it);
+    await saveSupply();this.closeModal();renderMain();toast(t().prof.saved);
+  },
+  async delItem(){
+    state.data.supplyDoc.supply_item=supplies().filter(i=>i.item_id!==state.editing);
+    await saveSupply();this.closeModal();renderMain();toast(t().toastDeleted);
+  },
+  openEmergency(){openEmergency();},
+  emerLang(l){state.lang=l;renderChrome();renderTabs();openEmergency();},
+  closeEmergency(){document.getElementById('emergency').classList.remove('show');},
+  openKuji(){openKuji();},
+  closeKuji(){document.getElementById('kuji').classList.remove('show');},
+  // ---- Lens: camera (mobile) / upload (desktop QA) -> /api/lens multimodal ----
+  async lensCam(){
+    try{
+      _lensStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}});
+      const v=document.getElementById('lens-video');v.srcObject=_lensStream;await v.play();
+      v.style.display='block';const ph=document.getElementById('lens-ph');if(ph)ph.style.display='none';
+      const stg=v.closest('.lens-stage');stg.classList.add('live','cam-on');/* cam-on = live video only (not photo preview) -> gates the overlaid mobile shutter */
+      if(window.matchMedia('(max-width:640px)').matches)setTimeout(()=>stg.scrollIntoView({behavior:'smooth',block:'center'}),80);/* bring viewfinder + shutter into one screen */
+      const pv=document.getElementById('lens-preview');if(pv)pv.style.display='none';
+      document.getElementById('lens-cam').style.display='none';
+      document.getElementById('lens-shoot').style.display='';
+      // Native zoom: show the slider only when the capability reports zoom (iOS 17+ Safari / most Android Chrome)
+      try{
+        const track=_lensStream.getVideoTracks()[0];
+        const caps=track.getCapabilities?track.getCapabilities():null;
+        const zi=document.getElementById('lens-zoom');
+        if(zi&&caps&&caps.zoom&&typeof caps.zoom.min==='number'){
+          zi.min=caps.zoom.min;zi.max=caps.zoom.max;zi.step=caps.zoom.step||0.1;
+          zi.value=(track.getSettings&&track.getSettings().zoom)||caps.zoom.min;
+          zi.style.display='block';
+          zi.oninput=()=>{track.applyConstraints({advanced:[{zoom:parseFloat(zi.value)}]}).catch(()=>{});};
+        }else if(zi){zi.style.display='none';}
+      }catch(e){/* zoom 非必要功能，失敗靜默 */}
+    }catch(e){toast(state.lang==='ja'?'カメラが 使（つか）えません。アップロードを どうぞ':'Camera unavailable — use Upload');}
+  },
+  async lensShoot(){
+    const v=document.getElementById('lens-video');if(!v||!v.videoWidth)return;
+    const cv=document.createElement('canvas');cv.width=v.videoWidth;cv.height=v.videoHeight;
+    cv.getContext('2d').drawImage(v,0,0);
+    const dataUrl=cv.toDataURL('image/jpeg',0.85);
+    this._lensStop();
+    await this._lensRecognize(dataUrl,'image/jpeg');
+  },
+  lensFile(inp){
+    const f=inp.files&&inp.files[0];if(!f)return;
+    if(!/^image\/(png|jpeg)$/i.test(f.type||'')){toast('JPG / PNG only');inp.value='';return;}
+    // Add a downscale step to the upload path (an AI-generated 11MB PNG -> exceeds the 8MB body cap -> 413 -> was misreported as "offline").
+    // <=1600px + JPEG 0.85 = same quality as the camera path; also saves Gemini API payload.
+    const reader=new FileReader();reader.onload=()=>{
+      const img=new Image();
+      img.onload=async()=>{
+        const MAX=1600;const sc=Math.min(1,MAX/Math.max(img.width||1,img.height||1));
+        if(sc<1||f.size>2*1024*1024){
+          const cv=document.createElement('canvas');cv.width=Math.round((img.width||1)*sc);cv.height=Math.round((img.height||1)*sc);
+          cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+          await this._lensRecognize(cv.toDataURL('image/jpeg',0.85),'image/jpeg');
+        }else{await this._lensRecognize(reader.result,f.type);}
+      };
+      img.onerror=async()=>{await this._lensRecognize(reader.result,f.type);};
+      img.src=reader.result;
+    };
+    reader.readAsDataURL(f);
+  },
+  async _lensRecognize(dataUrl,mime){
+    const res=document.getElementById('lens-result');if(!res)return;
+    // Show a preview: let the user see what they captured/uploaded
+    const pv=document.getElementById('lens-preview');const ph=document.getElementById('lens-ph');
+    if(pv){pv.src=dataUrl;pv.style.display='block';const st=pv.closest('.lens-stage');if(st){st.classList.add('live');if(window.matchMedia('(max-width:640px)').matches)setTimeout(()=>st.scrollIntoView({behavior:'smooth',block:'center'}),80);}}if(ph)ph.style.display='none';
+    res.innerHTML=`<div class="lens-loading"><span class="lens-spin"></span>${state.lang==='ja'?'読（よ）み取（と）り中（ちゅう）…':'Reading…'}</div>`;applyRuby(res);
+    let data=null;
+    if(state.aiUnavailDemo){
+      data={use_fallback:true,_reason:'demo'};  // Offline demo: skip the /api/lens call and hand off straight to the deterministic path
+    }else{
+      try{
+        const r=await Promise.race([api('/api/lens','POST',{image:dataUrl,mime}),
+          new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),20000))]);
+        data=r&&r.data;
+      }catch(e){data={use_fallback:true,_reason:state.online?'ai':'offline'};}
+      if(data&&data.use_fallback&&!data._reason)data._reason=state.online?'ai':'offline';
+    }
+    res.innerHTML=renderLensResult(data);applyRuby(res);
+  },
+  _lensStop(){
+    if(_lensStream){_lensStream.getTracks().forEach(tr=>tr.stop());_lensStream=null;}
+    const zi=document.getElementById('lens-zoom');if(zi)zi.style.display='none';
+    const v=document.getElementById('lens-video');if(v){v.style.display='none';v.srcObject=null;}
+    const ph=document.getElementById('lens-ph');if(ph)ph.style.display='';const pv2=document.getElementById('lens-preview');const st2=document.querySelector('.lens-stage');if(st2){st2.classList.remove('cam-on');if(!pv2||pv2.style.display==='none')st2.classList.remove('live');}
+    const cam=document.getElementById('lens-cam');if(cam)cam.style.display='';
+    const sh=document.getElementById('lens-shoot');if(sh)sh.style.display='none';
+  },
+};
+window.App=App;
+
+(async()=>{try{await loadAll();renderAll();}catch(e){document.getElementById('wrap').innerHTML='<div class="empty">Digital Omamori could not load. Please refresh or try again later.</div>';}})();
+/* Real connection status: online/offline events -> update the connection pill + banner (reflects browser connectivity only, not whether Gemini/portal is available). */
+window.addEventListener('online',()=>{state.online=true;renderChrome();renderMain();});
+// Back-to-top button (the "All" list is very long, so scrolling back up needs help) — appears after scrolling past 600px
+window.addEventListener('scroll',()=>{const b=document.getElementById('to-top');if(b)b.classList.toggle('show',window.scrollY>600);},{passive:true});
+window.addEventListener('offline',()=>{state.online=false;renderChrome();renderMain();});
+/* Prevent stale cached builds: actively clear any old SW + caches on load;
+ * if an SW existed (may be serving an old page) -> reload once to fetch the latest from the server. sessionStorage guards against a reload loop. */
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.getRegistrations().then(function(regs){
+    var had=regs.length>0;
+    Promise.all(regs.map(function(r){return r.unregister();}))
+      .then(function(){return window.caches?caches.keys().then(function(ks){return Promise.all(ks.map(function(k){return caches.delete(k);}));}):null;})
+      .then(function(){ if(had && !sessionStorage.getItem('ps-sw-cleared')){ sessionStorage.setItem('ps-sw-cleared','1'); location.reload(); } });
+  }).catch(function(){});
+}
+window.__PS_READY__=true;
+</script>
+</body>
+</html>

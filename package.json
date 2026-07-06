@@ -1,0 +1,16 @@
+{
+  "name": "plainsafe",
+  "private": true,
+  "type": "module",
+  "description": "Digital Omamori — local-first disaster decision assistant for foreigners in Japan.",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node tests/core.test.mjs && node tests/dashboard.smoke.mjs && python3 tests/server_smoke.py",
+    "test:core": "node tests/core.test.mjs",
+    "test:ui": "node tests/dashboard.smoke.mjs",
+    "serve": "python3 -m http.server 8080"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1"
+  }
+}

@@ -1,0 +1,334 @@
+{
+  "_meta": {
+    "purpose": "Disaster-omikuji fortune DB (No.1-20). Used by the app's draw.",
+    "GENERATED_FROM": "data/kuji_content_draft.md (the hand-edited source). Do not hand-edit this JSON — edit the source, then regenerate.",
+    "draw": "% readiness -> tier (deterministic, fixed) -> pick one random fortune of the same tier.",
+    "ladder": "大大吉 ＞ 大吉 ＞ 中吉 ＞ 小吉 ＞ 吉（末吉なし）",
+    "distribution": "大大吉×2 / 大吉×4 / 中吉×6 / 小吉×5 / 吉×3 = 20",
+    "tip_source": "Tokyo Metropolitan disaster book (Tokyo Bosai) and Fire and Disaster Management Agency basics.",
+    "rules": "poem = warm, never frightening; quake_tip = easy Japanese, grounded in official sources (no fabrication); always positive. Vocabulary follows N4/N5 easy Japanese.",
+    "title": "Short display title (<=5 base characters, excluding furigana; kanji carry readings). The 'no' index is kept for editing reference only and is never shown on screen."
+  },
+  "kuji": [
+    {
+      "no": 1,
+      "luck": "daidaikichi",
+      "title": {
+        "ja": "福（ふく）あふれる",
+        "en": "Bloom"
+      },
+      "poem": {
+        "ja": "そなえは そろっています。福（ふく）も あふれます。家（いえ）に 光（ひかり）、心（こころ）に ゆとり。",
+        "en": "Preparation overflows, and so does fortune. Light in the home, ease in the heart."
+      },
+      "quake_tip": {
+        "ja": "水（みず）と 食（た）べ物（もの）は、3日分（みっかぶん）あると 安心（あんしん）。ときどき 賞味期限（しょうみきげん）を 見（み）ます。",
+        "en": "About 3 days of supplies is the guide. Checking expiry dates now and then brings even more peace of mind."
+      }
+    },
+    {
+      "no": 2,
+      "luck": "daidaikichi",
+      "title": {
+        "ja": "晴（は）れ空（ぞら）",
+        "en": "Clear"
+      },
+      "poem": {
+        "ja": "今日（きょう）の あなたの 空（そら）は、きれいに 晴（は）れる。備（そな）えは 心（こころ）の お守（まも）り。",
+        "en": "The sky is clear above you today. Your preparations are a charm for the heart."
+      },
+      "quake_tip": {
+        "ja": "非常持（ひじょうも）ち出（だ）し袋（ぶくろ）は、にげる ときに 持（も）つ かばんです。玄関（げんかん）の 近（ちか）くに 置（お）くと、すぐ 持（も）てます。",
+        "en": "Keep your emergency grab-bag near the entrance, so it's easy to take."
+      }
+    },
+    {
+      "no": 3,
+      "luck": "daikichi",
+      "title": {
+        "ja": "福（ふく）集（あつ）まる",
+        "en": "Gather"
+      },
+      "poem": {
+        "ja": "備（そな）えは 静（しず）かな 強（つよ）さ。あなたの 家（いえ）に 福（ふく）が 集（あつ）まる。",
+        "en": "Preparation is a quiet strength. Fortune gathers in your home."
+      },
+      "quake_tip": {
+        "ja": "家族（かぞく）と 集（あつ）まる 場所（ばしょ）を 決（き）めて おくと 安心（あんしん）。",
+        "en": "Decide a meeting place with your family in advance."
+      }
+    },
+    {
+      "no": 4,
+      "luck": "daikichi",
+      "title": {
+        "ja": "光（ひかり）さす",
+        "en": "Light"
+      },
+      "poem": {
+        "ja": "光（ひかり）は 用意（ようい）した 人（ひと）に さす。今日（きょう）も よい 一日（いちにち）。",
+        "en": "Light shines on those who prepared. Today, too, will be a good day."
+      },
+      "quake_tip": {
+        "ja": "スマホの 充電（じゅうでん）と モバイルバッテリーを、ときどき 確認（かくにん）します。",
+        "en": "Keep your phone and power bank charged."
+      }
+    },
+    {
+      "no": 5,
+      "luck": "daikichi",
+      "title": {
+        "ja": "福（ふく）の あかり",
+        "en": "Glow"
+      },
+      "poem": {
+        "ja": "そなえ ある 家（いえ）に、福（ふく）の あかりが そっと つく。",
+        "en": "Where there is preparation, fortune quietly lights the home."
+      },
+      "quake_tip": {
+        "ja": "高（たか）い 家具（かぐ）は、たおれない ように かべに とめると 安心（あんしん）。",
+        "en": "Securing tall furniture to the wall brings peace of mind."
+      }
+    },
+    {
+      "no": 6,
+      "luck": "daikichi",
+      "title": {
+        "ja": "深（ふか）い根（ね）",
+        "en": "Roots"
+      },
+      "poem": {
+        "ja": "そなえは 安心（あんしん）の 根（ね）。根（ね）の 深（ふか）い 木（き）は 倒（たお）れない。",
+        "en": "What you store is the root of peace. A deep-rooted tree does not fall."
+      },
+      "quake_tip": {
+        "ja": "にげる ときは、ブレーカーを 切（き）ります。火事（かじ）に なりにくく なります。",
+        "en": "Switch off the breaker when you evacuate, to help prevent fires."
+      }
+    },
+    {
+      "no": 7,
+      "luck": "chukichi",
+      "title": {
+        "ja": "一歩（いっぽ）ずつ",
+        "en": "Steady"
+      },
+      "poem": {
+        "ja": "あせらなくて いい。備（そな）えは、少（すこ）しずつ 育（そだ）って いく。",
+        "en": "No need to rush. Preparedness grows a little every day."
+      },
+      "quake_tip": {
+        "ja": "揺（ゆ）れが 止（と）まってから、火（ひ）を 消（け）します。",
+        "en": "Deal with flames after the shaking stops, not during."
+      }
+    },
+    {
+      "no": 8,
+      "luck": "chukichi",
+      "title": {
+        "ja": "そよ風（かぜ）",
+        "en": "Breeze"
+      },
+      "poem": {
+        "ja": "おだやかな 風（かぜ）。今日（きょう）の 小（ちい）さな 一歩（いっぽ）が、福（ふく）を よぶ。",
+        "en": "A gentle wind. Today's small move invites fortune."
+      },
+      "quake_tip": {
+        "ja": "寝（ね）る 場所（ばしょ）の そばに、スリッパと 懐中電灯（かいちゅうでんとう）を 置（お）くと 安心（あんしん）。",
+        "en": "Slippers and a flashlight by your bed bring peace of mind."
+      }
+    },
+    {
+      "no": 9,
+      "luck": "chukichi",
+      "title": {
+        "ja": "あわてず",
+        "en": "Calm"
+      },
+      "poem": {
+        "ja": "あわてず、一歩（いっぽ）ずつ。今日（きょう）の 小（ちい）さな 備（そな）えが、明日（あした）を まもる。",
+        "en": "No rush — one step at a time. Today's small preparation guards tomorrow."
+      },
+      "quake_tip": {
+        "ja": "地震（じしん）の とき、まず テーブルの 下（した）で 頭（あたま）を まもりましょう。",
+        "en": "In an earthquake, first protect your head under a table."
+      }
+    },
+    {
+      "no": 10,
+      "luck": "chukichi",
+      "title": {
+        "ja": "半分（はんぶん）",
+        "en": "Halfway"
+      },
+      "poem": {
+        "ja": "道（みち）の 半分（はんぶん）まで 来（き）た。うしろを 見（み）ると、こんなに 進（すす）んで いる。",
+        "en": "You've come halfway. Look back — see how far you've walked."
+      },
+      "quake_tip": {
+        "ja": "電話（でんわ）が つながらない ときは、「171」（災害用伝言（さいがいようでんごん）ダイヤル）に かけます。家族（かぞく）に メッセージを のこせます。",
+        "en": "If calls won't connect, the '171' disaster message line can help."
+      }
+    },
+    {
+      "no": 11,
+      "luck": "chukichi",
+      "title": {
+        "ja": "福（ふく）が 来（く）る",
+        "en": "Near"
+      },
+      "poem": {
+        "ja": "そなえる 心（こころ）に、福（ふく）は そっと よって くる。",
+        "en": "Fortune quietly draws near to a prepared heart."
+      },
+      "quake_tip": {
+        "ja": "いつも 飲（の）む 薬（くすり）と、お薬手帳（くすりてちょう）の コピーを 用意（ようい）します。",
+        "en": "Keep your regular medicine and a copy of your medication record."
+      }
+    },
+    {
+      "no": 12,
+      "luck": "chukichi",
+      "title": {
+        "ja": "明日（あした）へ",
+        "en": "Forward"
+      },
+      "poem": {
+        "ja": "今日（きょう）の 一歩（いっぽ）、明日（あした）の 安心（あんしん）。あなたは ちゃんと 進（すす）んで いる。",
+        "en": "A step today, peace tomorrow. You are moving forward well."
+      },
+      "quake_tip": {
+        "ja": "水（みず）が 止（と）まる ことも あります。簡易（かんい）トイレが あると 安心（あんしん）。",
+        "en": "Water can stop — a portable toilet brings peace of mind."
+      }
+    },
+    {
+      "no": 13,
+      "luck": "shoukichi",
+      "title": {
+        "ja": "積（つ）もる福（ふく）",
+        "en": "Build"
+      },
+      "poem": {
+        "ja": "小（ちい）さな 福（ふく）、たしかな 福（ふく）。一（ひと）つずつ 積（つ）もって いく。",
+        "en": "Small fortune, certain fortune. It gathers one by one."
+      },
+      "quake_tip": {
+        "ja": "電気（でんき）が 止（と）まると、カードが 使（つか）えない ことも あります。お金（かね）は 小銭（こぜに）も 少（すこ）し 用意（ようい）します。",
+        "en": "Keep some cash (including coins) for when the power is out."
+      }
+    },
+    {
+      "no": 14,
+      "luck": "shoukichi",
+      "title": {
+        "ja": "おだやか",
+        "en": "Ease"
+      },
+      "poem": {
+        "ja": "穏（おだ）やかな 日（ひ）。あわてず、できる ことから ひとつ。",
+        "en": "A calm day. No rush — start with one thing you can do."
+      },
+      "quake_tip": {
+        "ja": "にげる ときは、靴（くつ）を はいて 足（あし）を まもります。",
+        "en": "Wear shoes when you evacuate, to protect your feet."
+      }
+    },
+    {
+      "no": 15,
+      "luck": "shoukichi",
+      "title": {
+        "ja": "いいしるし",
+        "en": "Sign"
+      },
+      "poem": {
+        "ja": "上（のぼ）り坂（ざか）も、一歩（いっぽ）なら 軽（かる）い。今日（きょう）の 備（そな）えは、いい しるし。",
+        "en": "Even uphill is light, one step at a time. Today's preparation is a good sign."
+      },
+      "quake_tip": {
+        "ja": "電気（でんき）が 止（と）まっても 使（つか）える ラジオが あると、正（ただ）しい 情報（じょうほう）を 聞（き）けます。",
+        "en": "A radio that works in a blackout helps you get accurate information."
+      }
+    },
+    {
+      "no": 16,
+      "luck": "shoukichi",
+      "title": {
+        "ja": "守（まも）られて",
+        "en": "Held"
+      },
+      "poem": {
+        "ja": "そっと ひかる 福（ふく）。あなたの まわりに、安心（あんしん）が ふえて いる。",
+        "en": "Fortune softly glows. Around you, peace of mind keeps growing."
+      },
+      "quake_tip": {
+        "ja": "地震（じしん）の あとは、エレベーターに 乗（の）りません。階段（かいだん）を 使（つか）います。",
+        "en": "After a quake, use the stairs, not the elevator."
+      }
+    },
+    {
+      "no": 17,
+      "luck": "shoukichi",
+      "title": {
+        "ja": "小（ちい）さな種（たね）",
+        "en": "Seed"
+      },
+      "poem": {
+        "ja": "小（ちい）さな 種（たね）、大（おお）きな 安心（あんしん）。今日（きょう）も ひとつ まいて おこう。",
+        "en": "A small seed, a great peace. Let's plant one more today."
+      },
+      "quake_tip": {
+        "ja": "大（おお）きく 揺（ゆ）れたら、窓（まど）や ガラスから 離（はな）れます。",
+        "en": "If it shakes hard, move away from windows and glass."
+      }
+    },
+    {
+      "no": 18,
+      "luck": "kichi",
+      "title": {
+        "ja": "はじまり",
+        "en": "Start"
+      },
+      "poem": {
+        "ja": "はじまりの 運（うん）。水（みず）一本（いっぽん）から、福（ふく）は ふえて いく。",
+        "en": "A fortune that's just beginning. From a single bottle of water, blessings grow."
+      },
+      "quake_tip": {
+        "ja": "水（みず）は、ひとり 1日（いちにち）に 3リットル あると 安心（あんしん）です。",
+        "en": "Water: about 3 litres per person per day is the guide."
+      }
+    },
+    {
+      "no": 19,
+      "luck": "kichi",
+      "title": {
+        "ja": "一歩目（いっぽめ）",
+        "en": "First"
+      },
+      "poem": {
+        "ja": "はじめの 一歩（いっぽ）。今日（きょう）の あなたから、福（ふく）は のびて いく。",
+        "en": "The first step. From you today, fortune begins to grow."
+      },
+      "quake_tip": {
+        "ja": "にげる ときは、車（くるま）を 使（つか）いません。歩（ある）いて にげると、道（みち）を みんなで 使（つか）えます。",
+        "en": "Evacuate on foot, not by car — it helps keep roads clear."
+      }
+    },
+    {
+      "no": 20,
+      "luck": "kichi",
+      "title": {
+        "ja": "今日（きょう）から",
+        "en": "Today"
+      },
+      "poem": {
+        "ja": "今日（きょう）が はじまり。小（ちい）さな 用意（ようい）が、明日（あした）の 福（ふく）に なる。",
+        "en": "Today is a beginning. A small preparation becomes tomorrow's fortune."
+      },
+      "quake_tip": {
+        "ja": "海（うみ）や 川（かわ）の 近（ちか）くで 大（おお）きく 揺（ゆ）れたら、高（たか）い ところへ にげます。",
+        "en": "Near the sea or a river, if it shakes hard, move to higher ground."
+      }
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+# Cloud Run deploy — these are excluded from the container image.
+# Keys never enter the image (Cloud Run authenticates via an attached service account / ADC; no key file needed).
+gcp-key.json
+GEMINI_KEY.txt
+*.pem
+*.key
+.cert/
+
+# dev / tests / history — not needed in the container (kept in GitHub, excluded from deploy)
+node_modules/
+snapshots/
+legacy/
+tests/
+__pycache__/
+*.pyc
+.DS_Store
+# photos/ = seed demo images (card thumbnails); shipped in the container. Only QA test images are excluded:
+photos/heic-test-front.heic
+photos/muji-test-front.png
+photos/muji-test2-front.png
+photos/pn-front.png
+*.command
+_build_history/
+inbox/
+CHANGELOG.md
+RUN.md
+
+# Kept (shipped to the container): server.py storage.py index.html sw.js manifest.json app/ data/ requirements.txt Dockerfile
+
+# repo hygiene 2026-07-06: internal boxes, never ship
+_dev_only/
+_archive/
+_to_be_deleted/

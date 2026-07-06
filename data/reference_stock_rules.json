@@ -1,0 +1,73 @@
+{
+  "_meta": {
+    "version": "v1",
+    "generated": "2026-06-21",
+    "purpose": "Emergency Kit algorithm baseline + targetQuantity formulas + special-needs groups + rolling stock.",
+    "sources": [
+      {"label": "首相官邸 災害が起きる前にできること", "url": "https://www.kantei.go.jp/jp/headline/bousai/sonae.html"},
+      {"label": "首相官邸 備えチェックリスト PDF", "url": "https://www.kantei.go.jp/jp/content/000182715.pdf"},
+      {"label": "農林水産省 災害時に備えた食品ストックガイド", "url": "https://www.maff.go.jp/j/zyukyu/foodstock/guidebook.html"},
+      {"label": "農水省 要配慮者版 食品ストックガイド", "url": "https://www.maff.go.jp/j/zyukyu/foodstock/guidebook.html"},
+      {"label": "東京備蓄ナビ(JS計算器,演算法參考)", "url": "https://www.bichiku.metro.tokyo.lg.jp/"}
+    ],
+    "WARNING": "Values come from official pages/PDFs (some via OCR, minor error). Re-verify against primary sources before pitch/production use. Attribution required."
+  },
+
+  "baseline": {
+    "water_L_per_person_per_day": 3,
+    "min_days": 3,
+    "recommended_days_large_disaster": 7,
+    "food_min_days": 3,
+    "food_recommended_days": 7,
+    "notes": [
+      "飲料水とは別に『生活用水』(トイレ等)も必要(ポリタンク／風呂に水を張る)。",
+      "大規模災害時は1週間分が望ましい。"
+    ],
+    "source": "首相官邸 sonae.html"
+  },
+
+  "target_formula": {
+    "people": "familyAdults + familyChildren",
+    "days": "targetDays (default 3, ideal 7)",
+    "rules": {
+      "water_L": "3 × people × days",
+      "food_servings": "people × days × 3 (3食/日)",
+      "portable_toilet_uses": "people × days × 5 (5回/日＝内閣府 避難所トイレ確保・管理ガイドライン2016 p.10；経産省も35回=7日分で同係数)",
+      "note": "Example formula; a finer version (age/sex differences) references the Tokyo Bichiku Navi interactive logic."
+    },
+    "example": "おとな2+こども1=3人 × 3日 → 水 27L / 非常食 27食 / 携帯トイレ ~45回",
+    "source": "kantei baseline + 東京備蓄ナビ logic"
+  },
+
+  "categories": [
+    {"key": "water", "label_ja": "飲料水", "rule": "3L×人×日。生活用水は別途。"},
+    {"key": "food", "label_ja": "非常食/ローリングストック", "rule": "3日分(理想1週)。アルファ米・缶詰・乾パン・レトルト等。"},
+    {"key": "toilet", "label_ja": "携帯トイレ・簡易トイレ", "rule": "断水時必須。人×日×約5回。"},
+    {"key": "cooking", "label_ja": "カセットコンロ・ボンベ", "rule": "停電・ガス停止時の調理。ボンベ予備。"},
+    {"key": "light", "label_ja": "灯り", "rule": "懐中電灯・ろうそく・マッチ・予備電池。"},
+    {"key": "power", "label_ja": "モバイルバッテリー", "rule": "情報収集・連絡用。"},
+    {"key": "medical", "label_ja": "常備薬・救急セット", "rule": "処方薬・お薬手帳含む。"},
+    {"key": "cash", "label_ja": "現金(小銭)", "rule": "停電時カード・電子決済不可。公衆電話用小銭。"},
+    {"key": "hygiene", "label_ja": "衛生用品", "rule": "トイレットペーパー・ティッシュ・ウェットティッシュ・生理用品。"},
+    {"key": "info", "label_ja": "情報・連絡", "rule": "携帯ラジオ・ハザードマップ・171災害用伝言ダイヤル。"}
+  ],
+
+  "rolling_stock": {
+    "method": "ローリングストック法:普段の食品を少し多めに買う → 古いものから食べる → 食べた分を買い足す。常に一定量を備蓄。",
+    "benefit": "賞味期限切れを防ぐ・日常に溶け込む(恐慌感なし)。",
+    "source": "農水省 食品ストックガイド"
+  },
+
+  "need_consideration": [
+    {"group": "乳幼児", "items": ["液体ミルク/粉ミルク", "離乳食", "紙オムツ", "おしりふき", "哺乳瓶/使い捨て哺乳瓶"]},
+    {"group": "高齢者", "items": ["常備薬", "入れ歯・洗浄剤", "大人用オムツ", "やわらかい食品(嚥下配慮)"]},
+    {"group": "慢性疾患", "items": ["処方薬(多めに)", "お薬手帳(コピー/写真)", "医療機器の予備電源"]},
+    {"group": "食物アレルギー", "items": ["アレルギー対応の非常食", "原材料表示の確認", "アレルゲン情報カード"]},
+    {"source": "農水省 要配慮者版 食品ストックガイド"}
+  ],
+
+  "tokyo_bichiku_navi": {
+    "note": "A JS interactive calculator, no static text. Its value is the algorithm that computes stock from people/age/sex. The Emergency Kit calculator can reference its interactive rules (input people/age band -> output per-item amounts).",
+    "url": "https://www.bichiku.metro.tokyo.lg.jp/"
+  }
+}
