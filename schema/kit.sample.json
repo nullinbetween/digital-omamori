@@ -1,0 +1,93 @@
+{
+  "_meta": {
+    "note": "SAMPLE emergency-kit (supply_item) data for demo. Core of the Prepare Track. Stored client-side, not a local pack. 2026-07-02: matched_rule_id made explicit (coverage approach A: trust only the saved rule_id; null=Extra, not counted).",
+    "schema_version": "0.1 (5-entity)",
+    "WARNING": "Sample/placeholder. expiry/quantity are illustrative, not real inventory."
+  },
+  "family": {
+    "familyAdults": 2,
+    "familyChildren": 1,
+    "targetDays": 3,
+    "storageLocations": [
+      "玄関クローゼット",
+      "寝室押入れ"
+    ]
+  },
+  "supply_item": [
+    {
+      "item_id": "kit-water-001",
+      "name_ja": "保存水 2L",
+      "name_en": "Long-life drinking water 2L",
+      "category": "water",
+      "expiryDate": null,
+      "quantity": 0,
+      "targetQuantity": 27,
+      "storageLocation": "玄関クローゼット",
+      "status": "missing",
+      "photo": null,
+      "gap_reason_en": "No drinking water stored. Target for your family (2 adults, 1 child, 3 days) is about 27L.",
+      "gap_reason_ja": "のみみずが ありません。かぞく（おとな2・こども1・3にちぶん）の めやすは やく27リットルです。",
+      "matched_rule_id": "water"
+    },
+    {
+      "item_id": "kit-cash-001",
+      "name_ja": "非常用現金（小銭）",
+      "name_en": "Emergency cash (small coins)",
+      "category": "cash",
+      "expiryDate": null,
+      "quantity": 0,
+      "targetQuantity": 1,
+      "storageLocation": "玄関クローゼット",
+      "status": "missing",
+      "photo": null,
+      "gap_reason_en": "No emergency cash. Public phones and some shops need coins when cards and networks fail.",
+      "gap_reason_ja": "ひじょうようの おかねが ありません。でんわや みせで こぜにが いることが あります。",
+      "matched_rule_id": "cash"
+    },
+    {
+      "item_id": "kit-power-001",
+      "name_ja": "モバイルバッテリー 10000mAh",
+      "name_en": "Power bank 10000mAh",
+      "category": "power",
+      "expiryDate": null,
+      "quantity": 1,
+      "targetQuantity": 1,
+      "storageLocation": "寝室押入れ",
+      "status": "ready",
+      "photo": null,
+      "gap_reason_en": null,
+      "gap_reason_ja": null,
+      "matched_rule_id": "power_bank"
+    },
+    {
+      "item_id": "kit-childfood-001",
+      "name_ja": "こども用 ビスケット（保存食）",
+      "name_en": "Child emergency biscuits",
+      "category": "child",
+      "expiryDate": "2026-07-05",
+      "quantity": 2,
+      "targetQuantity": 3,
+      "storageLocation": "玄関クローゼット",
+      "status": "expiring_soon",
+      "photo": null,
+      "gap_reason_en": "Expires in about 2 weeks. Eat and replace soon (rotation).",
+      "gap_reason_ja": "あと 2しゅうかんで きげんです。たべて、あたらしく かいなおして ください。",
+      "matched_rule_id": null
+    },
+    {
+      "item_id": "kit-medicine-001",
+      "name_ja": "常備薬・救急セット",
+      "name_en": "Basic medicine / first-aid set",
+      "category": "medical",
+      "expiryDate": null,
+      "quantity": 1,
+      "targetQuantity": 1,
+      "storageLocation": "寝室押入れ",
+      "status": "not_checked",
+      "photo": null,
+      "gap_reason_en": "Not checked yet. Verify contents and any medicine expiry dates.",
+      "gap_reason_ja": "まだ かくにんして いません。なかみと くすりの きげんを みて ください。",
+      "matched_rule_id": "medical"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.venv/
+node_modules/
+.DS_Store
+._*
+.env
+.env.*
+*credentials*
+*service-account*.json
+# Withheld material must never be committed
+data/
+index.html
+tests/
+prompts/
